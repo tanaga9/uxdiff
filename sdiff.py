@@ -1,85 +1,58 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python
-#!/usr/bin/env python2.6
-#!/usr/bin/env python3.0
-#!/usr/bin/env jython
-#!/usr/bin/env C:\Python26\python
-#!/usr/bin/env C:\jython2.5.1\bin\jython
+
+#from __future__ import print_function
 
 """
 Whats sdiff.py
 ==============
-Compare two text files; generate the resulting delta.
+Compare two text files or directories; generate the resulting delta.
 
 License
 =======
-PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.1.0 beta'
+__version__=  '1.1.1'
 
 
-# PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+# The MIT License (MIT)
 # --------------------------------------------
+# Copyright (c) 2011 Tanaga
 # 
-# 1. This LICENSE AGREEMENT is between the Python Software Foundation
-# ("PSF"), and the Individual or Organization ("Licensee") accessing and
-# otherwise using this software ("Python") in source or binary form and
-# its associated documentation.
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
 # 
-# 2. Subject to the terms and conditions of this License Agreement, PSF hereby
-# grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
-# analyze, test, perform and/or display publicly, prepare derivative works,
-# distribute, and otherwise use Python alone or in any derivative version,
-# provided, however, that PSF's License Agreement and PSF's notice of copyright,
-# i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009 Python
-# Software Foundation; All Rights Reserved" are retained in Python alone or in any
-# derivative version prepared by Licensee.
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR
+# A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+# CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+# OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
-# 3. In the event Licensee prepares a derivative work that is based on
-# or incorporates Python or any part thereof, and wants to make
-# the derivative work available to others as provided herein, then
-# Licensee hereby agrees to include in any such work a brief summary of
-# the changes made to Python.
-# 
-# 4. PSF is making Python available to Licensee on an "AS IS"
-# basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
-# IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
-# DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
-# FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
-# INFRINGE ANY THIRD PARTY RIGHTS.
-# 
-# 5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
-# FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
-# A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
-# OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
-# 
-# 6. This License Agreement will automatically terminate upon a material
-# breach of its terms and conditions.
-# 
-# 7. Nothing in this License Agreement shall be deemed to create any
-# relationship of agency, partnership, or joint venture between PSF and
-# Licensee.  This License Agreement does not grant permission to use PSF
-# trademarks or trade name in a trademark sense to endorse or promote
-# products or services of Licensee, or any third party.
-# 
-# 8. By copying, installing or otherwise using Python, Licensee
-# agrees to be bound by the terms and conditions of this License
-# Agreement.
-
 
 import sys, difflib, optparse, unicodedata, re, codecs, doctest
 # import pprint, pdb, profile
 
 import filecmp
 import os, stat
+try: import io # python2.x
+except(ImportError): pass # python3.x
 
 import itertools
-try:   itertools.filterfalse
+try:   itertools.filterfalse # python3.x
 except(AttributeError):
-    itertools.filterfalse = itertools.ifilterfalse
+    itertools.filterfalse = itertools.ifilterfalse # python2.x
+
+BUFSIZE = 8*1024
 
 # siff.pyとは
 # ===========
@@ -89,8 +62,24 @@ except(AttributeError):
 #
 # ライセンス
 # ==========
-# PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+# The MIT License (MIT)
 
+def is_text(filepath):
+    bufsize = BUFSIZE
+    fp = open(filepath, 'rb')
+    try:
+        while True:
+            buff = fp.read(bufsize)
+            if len(buff) == 0: break
+            try:
+                if '\0' in buff: # python2.x
+                    return False
+            except TypeError:
+                if 0    in buff: # python3.x
+                    return False
+    finally:
+        fp.close()
+    return True
 
 # 文字列の幅(文字幅)を返す関数。
 # 等幅フォントで表示されるASCII文字の横幅を1とする
@@ -278,236 +267,6 @@ def strwidthdivsync(textarray, width=180):
         array[i].append(strbuffer[i])
     
     return array
-
-
-# filecmp.dircmp
-#  |-- left_only       [files, dirs]
-#  | `-- left_list     [files, dirs] - hide - ignore
-#  |-- right_only      [files, dirs]
-#  | `-- right_list    [files, dirs] - hide - ignore
-#  `-- common          [files, dirs]
-#    |-- common_dirs   [dirs] --> subdirs
-#    |-- common_files  [files]
-#    | |-- same_files  [files]
-#    | |-- diff_files  [files]
-#    | `-- funny_files [files]
-#    `-- common_funny  [????]
-
-class dircmp(filecmp.dircmp):
-    def __init__(self, a, b, ignore=None, hide=None): # Initialize
-        filecmp.dircmp.__init__(self, a, b, ignore, hide)
-        self.left_only_dirs   = [x for x in self.left_only  if os.path.isdir (os.path.join(self.left, x))]
-        self.left_only_files  = [x for x in self.left_only  if os.path.isfile(os.path.join(self.left, x))]
-        self.left_list_dirs   = [x for x in self.left_list  if os.path.isdir (os.path.join(self.left, x))]
-        self.left_list_files  = [x for x in self.left_list  if os.path.isfile(os.path.join(self.left, x))]
-        self.right_only_dirs  = [x for x in self.right_only if os.path.isdir (os.path.join(self.right, x))]
-        self.right_only_files = [x for x in self.right_only if os.path.isfile(os.path.join(self.right, x))]
-        self.right_list_dirs  = [x for x in self.right_list if os.path.isdir (os.path.join(self.right, x))]
-        self.right_list_files = [x for x in self.right_list if os.path.isfile(os.path.join(self.right, x))]
-        pass
-    
-    def dic_dirs(self):
-        dic = {}
-        for x in self.left_only_dirs:   dic[x] = 'left_only_dir'
-        for x in self.right_only_dirs:  dic[x] = 'right_only_dir'
-        for x in self.common_dirs:      dic[x] = 'common_dir'
-        for x in self.common_funny:
-            a_path = os.path.join(self.left, x)
-            b_path = os.path.join(self.right, x)
-            
-            ok = True
-            try: a_stat = os.stat(a_path)
-            except os.error: ok = False
-            try: b_stat = os.stat(b_path)
-            except os.error: ok = False
-            
-            if ok:
-                a_type = stat.S_IFMT(a_stat.st_mode)
-                b_type = stat.S_IFMT(b_stat.st_mode)
-                if   stat.S_ISDIR(a_type) and stat.S_ISREG(b_type):
-                    dic[x] = 'common_funny_dir_to_file'
-                elif stat.S_ISREG(a_type) and stat.S_ISDIR(b_type):
-                    dic[x] = 'common_funny_file_to_dir'
-                else: pass
-            else: pass
-            pass
-        
-        return dic
-    
-    def dic_files(self):
-        dic = {}
-        for x in self.left_only_files:  dic[x] = 'left_only_file'
-        for x in self.right_only_files: dic[x] = 'right_only_file'
-        for x in self.same_files:       dic[x] = 'same_file'
-        for x in self.diff_files:       dic[x] = 'diff_file'
-        for x in self.funny_files:      dic[x] = 'funny_file'
-        for x in self.common_funny:
-            a_path = os.path.join(self.left, x)
-            b_path = os.path.join(self.right, x)
-            
-            ok = True
-            try: a_stat = os.stat(a_path)
-            except os.error: ok = False
-            try: b_stat = os.stat(b_path)
-            except os.error: ok = False
-            
-            if ok:
-                a_type = stat.S_IFMT(a_stat.st_mode)
-                b_type = stat.S_IFMT(b_stat.st_mode)
-                if   stat.S_ISDIR(a_type) and stat.S_ISREG(b_type):
-                    dic[x] = 'common_funny_dir_to_file'
-                elif stat.S_ISREG(a_type) and stat.S_ISDIR(b_type):
-                    dic[x] = 'common_funny_file_to_dir'
-                else: dic[x] = 'common_funny'
-            else: dic[x] = 'common_funny'
-            pass
-        
-        return dic
-    
-    def tree(self, recursive=True):
-        print(self.left.ljust(50) + ''.ljust(5) + self.right)
-        return self._tree(recursive)
-    
-    def _tree_only_left_right(self, which, ppath, prefix_left, prefix_right):
-        dic_dirs  = {}
-        dic_files = {}
-        
-        sub_list = list(itertools.filterfalse((self.hide+self.ignore).__contains__,
-                                              os.listdir(ppath)))
-        for x in sub_list:
-            path = os.path.join(ppath, x)
-            try: path_stat = os.stat(path)
-            except: dic_files[x] = 'only_funny'
-            else:
-                path_type = stat.S_IFMT(path_stat.st_mode)
-                if   stat.S_ISDIR(path_type): dic_dirs[x]  = 'only_funny_dir'
-                elif stat.S_ISREG(path_type): dic_files[x] = 'only_funny_file'
-                else: dic_files[x] = 'only_funny_file'
-                pass
-            pass
-        
-        dirs = dic_dirs
-        for i, key in enumerate(sorted(dirs.keys())):
-            if   which == 'left':
-                left = '|-- ' + key + '/'
-                right = ''
-                flag = '<'
-                subprefix_left  = prefix_left + '| '
-                subprefix_right = prefix_right
-            elif which == 'right':
-                left = ''
-                right = '|-- ' + key + '/'
-                flag = '>'
-                subprefix_left  = prefix_left
-                subprefix_right = prefix_right + '| '
-                pass
-            print((prefix_left + left).ljust(50) + flag.ljust(5) + (prefix_right+ right))
-            self._tree_only_left_right(which, os.path.join(ppath, key),
-                                       subprefix_left, subprefix_right)
-            pass
-        
-        files = dic_files
-        for i, key in enumerate(sorted(files.keys())):
-            if   which == 'left':
-                left = '|-- ' + key
-                right = ''
-                flag = '<'
-            elif which == 'right':
-                left = ''
-                right = '|-- ' + key
-                flag = '>'
-                pass
-            print((prefix_left + left).ljust(50) + flag.ljust(5) + (prefix_right+ right))
-            pass
-        
-        return
-    
-    def _tree(self, recursive=False, prefix='', diff_file_list=None):
-        if diff_file_list == None: diff_file_list = []
-        
-        line = '|'
-        dirs = self.dic_dirs()
-        for i, key in enumerate(sorted(dirs.keys())):
-            subdircmp = None
-            subdir_only = None
-            if   (dirs[key] == 'left_only_dir' or
-                  dirs[key] == 'common_funny_dir_to_file'):
-                left  = '|-- ' + key + '/'
-                right = '|'
-                flag  = '<'
-                if recursive: subdir_only = 'left'
-                pass
-            elif (dirs[key] == 'right_only_dir' or
-                  dirs[key] == 'common_funny_file_to_dir'):
-                left  = '|'
-                right = '|-- ' + key + '/'
-                flag  = '>'
-                if recursive: subdir_only = 'right'
-                pass
-            elif dirs[key] == 'common_dir':
-                left  = '|-- ' + key + '/'
-                right = '|-- ' + key + '/'
-                if recursive:
-                    a_x = os.path.join(self.left, key)
-                    b_x = os.path.join(self.right, key)
-                    subdircmp = dircmp(a_x, b_x, self.ignore, self.hide)
-                    flag  = ' '
-                else: flag  = '?'
-                pass
-            else: raise ''
-            print((prefix + left).ljust(50) + flag.ljust(5) + (prefix + right))
-            
-            if subdircmp != None:
-                diff_file_list += subdircmp._tree(recursive=True, prefix=prefix+'| ')
-                pass
-            elif subdir_only != None:
-                if   subdir_only == 'left':
-                    x = os.path.join(self.left,  key)
-                elif subdir_only == 'right':
-                    x = os.path.join(self.right, key)
-                    pass
-                self._tree_only_left_right(subdir_only, x,
-                                           prefix_left=prefix+'| ',
-                                           prefix_right=prefix+'| ')
-                pass
-            pass
-        
-        files = self.dic_files()
-        for i, key in enumerate(sorted(files.keys())):
-            if   (files[key] == 'left_only_file' or
-                  files[key] == 'common_funny_file_to_dir'):
-                left  = '|-- ' + key
-                right = '|'
-                flag  = '<'
-            elif (files[key] == 'right_only_file' or
-                  files[key] == 'common_funny_dir_to_file'):
-                left  = '|'
-                right = '|-- ' + key
-                flag  = '>'
-            elif files[key] == 'same_file':
-                left  = '|-- ' + key
-                right = '|-- ' + key
-                flag  = ' '
-            elif files[key] == 'diff_file':
-                left  = '|-- ' + key
-                right = '|-- ' + key
-                flag  = '|'
-                diff_file_list.append((os.path.join(self.left, key),
-                                       os.path.join(self.right, key)))
-            elif files[key] == 'funny_file':
-                left  = '|-- ' + key
-                right = '|-- ' + key
-                flag  = '?'
-            elif files[key] == 'common_funny':
-                left  = '|-- ' + key
-                right = '|-- ' + key
-                flag  = '?'
-            else: raise ''
-            print((prefix + left).ljust(50) + flag.ljust(5) + (prefix + right))
-            pass
-        return diff_file_list
-    
-    pass
 
 
 # テキスト差分取得クラス
@@ -1016,7 +775,7 @@ class Differ:
         """
         
         assert width >= (6 + 1 + 2) + (1 + 1 + 1) + (6 + 1 + 2)
-        textwidth = (width - ((6 + 1 + 0) + (1 + 1 + 1) + (6 + 1 + 0))) / 2
+        textwidth = int((width - ((6 + 1 + 0) + (1 + 1 + 1) + (6 + 1 + 0))) / 2)
         
         lines = []
         line = ''
@@ -1157,6 +916,271 @@ class Differ:
         
         return lines
 
+
+# filecmp.dircmp (ext_dircmp)
+#  |-- left_list           [files or dirs]
+#  | |-- left_only         [files or dirs]
+#  | `-.  |-- (ext_left_only_dirs)         [dirs]
+#  |   |  `-- (ext_left_only_files)        [files]
+#  `-- right_list          [files or dirs]
+#    |-- right_only        [files or dirs]
+#    | |  |-- (ext_right_only_dirs)     [dirs]
+#    `-+  `-- (ext_right_only_files)    [files]
+#      |
+#      `-- common          [files or dirs]
+#        |-- common_dirs   [dirs] --> subdirs[common_dir]
+#        |-- common_files  [files]
+#        | |-- same_files  [files]
+#        | |-- diff_files  [files]
+#        | `-- funny_files [files]
+#        `-- common_funny  [????]
+#          |-- (ext_dirs_to_files) [dir  <-> file]
+#          |-- (ext_files_to_dirs) [file <-> dir ]
+#          `-- (ext_common_funny)  [????]
+
+class ext_dircmp(filecmp.dircmp):
+    
+    def phase1(self): # Compute common names
+        filecmp.dircmp.phase1(self)
+        self.ext_left_only_dirs   = [x for x in self.left_only
+                                     if os.path.isdir (os.path.join(self.left,  x))]
+        self.ext_right_only_dirs  = [x for x in self.right_only
+                                     if os.path.isdir (os.path.join(self.right, x))]
+        self.ext_left_only_files  = [x for x in self.left_only
+                                     if os.path.isfile(os.path.join(self.left,  x))]
+        self.ext_right_only_files = [x for x in self.right_only
+                                     if os.path.isfile(os.path.join(self.right, x))]
+    
+    
+    def phase2(self): # Distinguish files, directories, funnies
+        self.common_dirs = []
+        self.common_files = []
+        self.common_funny = []
+        self.ext_dirs_to_files = []
+        self.ext_files_to_dirs = []
+        self.ext_common_funny = []
+        
+        for x in self.common:
+            a_path = os.path.join(self.left, x)
+            b_path = os.path.join(self.right, x)
+            
+            ok = 1
+            try:
+                a_stat = os.stat(a_path)
+            except os.error:
+                ok = 0
+            try:
+                b_stat = os.stat(b_path)
+            except os.error:
+                ok = 0
+            
+            if ok:
+                a_type = stat.S_IFMT(a_stat.st_mode)
+                b_type = stat.S_IFMT(b_stat.st_mode)
+                if a_type != b_type:
+                    self.common_funny.append(x)
+                    if   stat.S_ISDIR(a_type) and stat.S_ISREG(b_type):
+                        self.ext_dirs_to_files.append(x)
+                    elif stat.S_ISREG(a_type) and stat.S_ISDIR(b_type):
+                        self.ext_files_to_dirs.append(x)
+                    else:
+                        self.ext_common_funny.append(x)
+                elif stat.S_ISDIR(a_type):
+                    self.common_dirs.append(x)
+                elif stat.S_ISREG(a_type):
+                    self.common_files.append(x)
+                else:
+                    self.common_funny.append(x)
+                    self.ext_common_funny.append(x)
+            else:
+                self.common_funny.append(x)
+                self.ext_common_funny.append(x)
+    
+    def phase3(self): # Find out differences between common files
+        xx = filecmp.cmpfiles(self.left, self.right, self.common_files, shallow=0)
+        self.same_files, self.diff_files, self.funny_files = xx
+    
+    def phase4(self): # Find out differences between common subdirectories
+        # A new dircmp object is created for each common subdirectory,
+        # these are stored in a dictionary indexed by filename.
+        # The hide and ignore properties are inherited from the parent
+        self.subdirs = {}
+        for x in self.common_dirs:
+            a_x = os.path.join(self.left, x)
+            b_x = os.path.join(self.right, x)
+            self.subdirs[x]  = ext_dircmp(a_x, b_x, self.ignore, self.hide)
+    
+    def __getattr__(self, attr):
+        methodmap = {'subdirs' : self.phase4,
+                     'same_files' : self.phase3,
+                     'diff_files' : self.phase3,
+                     'funny_files' : self.phase3,
+                     'common_dirs' : self.phase2,
+                     'common_files' : self.phase2,
+                     'common_funny' : self.phase2,
+                     'ext_dirs_to_files' : self.phase2,
+                     'ext_files_to_dirs' : self.phase2,
+                     'ext_common_funny' : self.phase2,
+                     'common' : self.phase1,
+                     'left_only' : self.phase1,
+                     'ext_left_only_dirs' : self.phase1,
+                     'ext_left_only_files' : self.phase1,
+                     'right_only' : self.phase1,
+                     'ext_right_only_dirs' : self.phase1,
+                     'ext_right_only_files' : self.phase1,
+                     'left_list' : self.phase0,
+                     'right_list' : self.phase0}
+        if attr not in methodmap:
+            raise AttributeError(attr)
+        methodmap[attr]()
+        return getattr(self, attr)
+    
+    def dirtree(self):
+        left_dirset = set(self.ext_left_only_dirs  +
+                          self.common_dirs         +
+                          self.ext_dirs_to_files)
+        left_fileset = set(self.ext_files_to_dirs    +
+                           self.ext_left_only_files  +
+                           self.same_files       +
+                           self.diff_files       +
+                           self.funny_files      +
+                           self.ext_common_funny)
+        right_dirset = set(self.ext_right_only_dirs +
+                           self.common_dirs         +
+                           self.ext_files_to_dirs)
+        right_fileset = set(self.ext_dirs_to_files    +
+                            self.ext_right_only_files +
+                            self.same_files       +
+                            self.diff_files       +
+                            self.funny_files      +
+                            self.ext_common_funny)
+        
+        left_list  = ([('d', left_dir)   for left_dir   in sorted(left_dirset)] +
+                      [('f', left_file)  for left_file  in sorted(left_fileset)])
+        right_list = ([('d', right_dir)  for right_dir  in sorted(right_dirset)] +
+                      [('f', right_file) for right_file in sorted(right_fileset)])
+        
+        if len(left_list):
+            last_left = left_list[-1]
+            left_islast = False
+        else:
+            left_islast = None
+        if len(right_list):
+            last_right = right_list[-1]
+            right_islast = False
+        else:
+            right_islast = None
+        
+        ftype = 'd'
+        dirset = set(self.ext_left_only_dirs  +
+                     self.ext_right_only_dirs +
+                     self.common_dirs         +
+                     self.ext_dirs_to_files   +
+                     self.ext_files_to_dirs)
+        for dirname in sorted(dirset):
+            dircmpobj = None
+            if   (dirname in self.ext_left_only_dirs or
+                  dirname in self.ext_dirs_to_files):
+                tag = '<'
+            elif (dirname in self.ext_right_only_dirs or
+                  dirname in self.ext_files_to_dirs):
+                tag = '>'
+            elif dirname in self.common_dirs:
+                tag = ' '
+                dircmpobj = self.subdirs[dirname]
+            else:
+                tag = '?'
+            
+            if (left_islast is not None and
+                last_left[0] == ftype and
+                last_left[1] == dirname): left_islast = True
+            if (right_islast is not None and
+                last_right[0] == ftype and
+                last_right[1] == dirname): right_islast = True
+            
+            yield (ftype, tag, dirname, dircmpobj, left_islast, right_islast)
+            
+            if left_islast:  left_islast = None
+            if right_islast: right_islast = None
+            
+        
+        ftype = 'f'
+        fileset = set(self.ext_dirs_to_files    +
+                      self.ext_files_to_dirs    +
+                      self.ext_left_only_files  +
+                      self.ext_right_only_files +
+                      self.same_files       +
+                      self.diff_files       +
+                      self.funny_files      +
+                      self.ext_common_funny)
+        for filename in sorted(fileset):
+            if   (filename in self.ext_files_to_dirs or
+                  filename in self.ext_left_only_files):
+                tag = '<'
+            elif (filename in self.ext_dirs_to_files or
+                  filename in self.ext_right_only_files):
+                tag = '>'
+            elif filename in self.same_files:
+                tag = ' '
+            elif filename in self.diff_files:
+                tag = '|'
+            else:
+                tag = '?'
+            
+            if (left_islast is not None and
+                last_left[0] == ftype and
+                last_left[1] == filename): left_islast = True
+            if (right_islast is not None and
+                last_right[0] == ftype and
+                last_right[1] == filename): right_islast = True
+            
+            yield (ftype, tag, filename, None, left_islast, right_islast)
+            
+            if left_islast:  left_islast = None
+            if right_islast: right_islast = None
+        
+        return
+
+
+def formattext(tag, head1, text1, head2, text2, width,
+               cont_mark1='^', cont_mark2='^', sep_mark='|'):
+    pwidth = ((strwidth(head1) + strwidth(sep_mark)) +
+              (1 + strwidth(tag) + 1) +
+              (strwidth(head2) + strwidth(sep_mark)))
+    
+    assert width >= pwidth
+    textwidth = int((width - pwidth) / 2)
+    
+    text1_array = strwidthdiv(text1, textwidth)
+    text2_array = strwidthdiv(text2, textwidth)
+    
+    for i in range(max(len(text1_array), len(text2_array))):
+        line = ''
+        if i != 0: head1 = cont_mark1
+        if i != 0: head2 = cont_mark2
+        
+        try: ptext1 = text1_array[i]
+        except(IndexError):
+            head1  = ''
+            ptext1 = ''
+        try: ptext2 = text2_array[i]
+        except(IndexError):
+            head2  = ''
+            ptext2 = ''
+        
+        line += head1
+        line += sep_mark
+        line += ptext1
+        line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
+        if   i == 0:     line += (' ' + tag + ' ')
+        elif tag == ' ': line += (' ' + ' ' + ' ')
+        else:            line += (' ' + '^' + ' ')
+        line += head2
+        line += sep_mark
+        line += ptext2
+        yield line
+    return
+
 # 独自の形式で等幅フォントのターミナルで表示するための文字列の差分を返す。
 def original_diff(lines1, lines2, linejunk, charjunk,
                   cutoff, fuzzy, cutoffchar, context, width):
@@ -1227,6 +1251,106 @@ def original_diff(lines1, lines2, linejunk, charjunk,
             textlinediffs.append(differ.formatlinetext(num1, num2,
                                                        linediff, width))
 
+def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
+    r"""Compare directories."""
+    dircmp   = ext_dircmp(dir1, dir2)
+    dircmps  = [dircmp]
+    dirtrees = [dircmp.dirtree()]
+    heads1 = ['|']
+    heads2 = ['|']
+    while dirtrees:
+        for dirtree in dirtrees[-1]:
+            (ftype, tag, filepath, dircmpobj, left_islast, right_islast) = dirtree
+            
+            try: upath = filepath.decode(enc_filepath)
+            except(AttributeError): upath = filepath
+            
+            if left_islast:
+                heads1.pop()
+                heads1.append('`')
+            elif left_islast is None:
+                heads1.pop()
+                heads1.append(' ')
+            if right_islast:
+                heads2.pop()
+                heads2.append('`')
+            elif right_islast is None:
+                heads2.pop()
+                heads2.append(' ')
+            
+            head1 = '   '.join(heads1)
+            head2 = '   '.join(heads2)
+            
+            if left_islast:
+                heads1.pop()
+                heads1.append(' ')
+            if right_islast:
+                heads2.pop()
+                heads2.append(' ')
+            
+            cont_mark1 = '   '.join(heads1) + '   '
+            cont_mark2 = '   '.join(heads2) + '   '
+            
+            if   ftype == 'd':
+                upath += '/'
+                mark = '-+ '
+            elif ftype == 'f':
+                mark = '-- '
+            else: pass
+            
+            if tag == '<':
+                text1 = upath
+                text2 = ''
+                head1 += mark
+                head2 += '   '
+            elif tag == '>':
+                text1 = ''
+                text2 = upath
+                head1 += '   '
+                head2 += mark
+            else:
+                text1 = upath
+                text2 = upath
+                
+                if not recursive and dircmpobj is not None:
+                    tag = '?'
+                    head1 += '-+ '
+                    head2 += '-+ '
+                else:
+                    head1 += '-- '
+                    head2 += '-- '
+            
+            filepair = None
+            
+            if ftype == 'f' and tag == '|':
+                path1 = os.path.join(dircmps[-1].left,  filepath)
+                path2 = os.path.join(dircmps[-1].right, filepath)
+                
+                try: upath1 = path1.decode(enc_filepath)
+                except(AttributeError): upath1 = path1
+                try: upath2 = path2.decode(enc_filepath)
+                except(AttributeError): upath2 = path2
+                
+                filepair = (upath1, upath2)
+            
+            yield (tag,
+                   head1, text1, head2, text2,
+                   cont_mark1, cont_mark2,
+                   filepair)
+            
+            if recursive and dircmpobj is not None:
+                dircmps.append(dircmpobj)
+                dirtrees.append(dircmpobj.dirtree())
+                heads1.append('|')
+                heads2.append('|')
+                break
+        else:
+            dircmps.pop()
+            dirtrees.pop()
+            heads1.pop()
+            heads2.pop()
+
+
 def main():
     """main function"""
     
@@ -1235,7 +1359,8 @@ def main():
                                    ' [ -f | -c ]'
                                    ' [ -w WIDTH ]'
                                    ' [ other options ]'
-                                   ' file1 file2', version='%prog ' + __version__)
+                                   ' file_or_dir_1 file_or_dir_2',
+                                   version='%prog ' + __version__)
     # -fオプション: 差分を抽出した箇所以外のテキスト全体を表示する
     parser.add_option('-f', '--full', action='store_true', default=False,
                       help='Fulltext diff (default False) (disable context option)')
@@ -1254,7 +1379,8 @@ def main():
                       help='Set number of width  (default 130)')
     # -rオプション: ディレクトリ比較時にサブディレクトリが見つかった場合、再帰的に比較する
     parser.add_option('-r', '--recursive', action='store_true', default=False,
-                      help='Recursively compare any subdirectories found.')
+                      help='Recursively compare any subdirectories found. (default False)'
+                           ' (enable only compare directories)')
     def check_ratio(option, opt_str, value, parser):
         if not 0.0 <= value <= 1.0:
             raise optparse.OptionValueError(opt_str + ' option invalid.'
@@ -1300,10 +1426,14 @@ def main():
     parser.add_option('', '--enc-file2', metavar='ENCODING', type='string', default='utf-8',
                       action='callback', callback=check_codec,
                       help='Set encoding of rightside inputfile2 (default utf-8)')
-    # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはutf-8）
-    parser.add_option('', '--enc-stdout', metavar='ENCODING', type='string', default='utf-8',
+    # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはsys.getdefaultencoding）
+    parser.add_option('', '--enc-stdout', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
                       action='callback', callback=check_codec,
-                      help='Set encoding of standard output (default utf-8)')
+                      help='Set encoding of standard output (default `sys.getdefaultencoding()`)')
+    # --enc-filepathオプション: ファイル名に使用されるコーデックを指定する（デフォルトはsys.getdefaultencoding()）
+    parser.add_option('', '--enc-filepath', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
+                      action='callback', callback=check_codec,
+                      help='Set encoding of filepath (default `sys.getdefaultencoding()`)')
     # --ignore-crlfオプション: 改行コードの違い（crとlf）を無視する
     parser.add_option('', '--ignore-crlf', action='store_true', default=False,
                       help='Ignore carriage return (\'\\r\') and line feed (\'\\n\') (default False)')
@@ -1340,8 +1470,15 @@ def main():
     
     # 引数を変数に設定
     file_or_dir1, file_or_dir2 = args
+    
     context = options.context
     full = not options.full
+    
+    try: buffer = sys.stdout.buffer
+    except(AttributeError):
+        sys.stdout = codecs.getwriter(options.enc_stdout)(sys.stdout) # python2.x
+    else:
+        sys.stdout = io.TextIOWrapper(buffer, encoding=options.enc_stdout) # python3.x
     
     if options.full:
         context = None
@@ -1357,44 +1494,109 @@ def main():
         charjunk = lambda char: char in options.charjunk
     else:
         charjunk = None
-
-    cmpdir = None
+    
+    cmpdir = False
     cmplist = []
     if   os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
         # diff [DIR] and [DIR]
-        cmpdir = dircmp(file_or_dir1, file_or_dir2)
-        cmplist = cmpdir.tree(recursive=options.recursive)
+        cmpdir = True
+        
+        for line in formattext(' ',
+                               '', file_or_dir1 + '/', '', file_or_dir2 + '/',
+                               options.width,
+                               cont_mark1='', cont_mark2='', sep_mark=''):
+            print(line)
+        
+        for result in dircmp(file_or_dir1, file_or_dir2,
+                             options.enc_filepath, options.recursive):
+            (tag,
+            head1, text1,
+            head2, text2,
+            cont_mark1, cont_mark2,
+            filepair) = result
+            
+            for line in formattext(tag,
+                                   head1, text1, head2, text2,
+                                   options.width,
+                                   cont_mark1=cont_mark1,
+                                   cont_mark2=cont_mark2,
+                                   sep_mark=''):
+                print(line)
+            if filepair is not None:
+                cmplist.append(filepair)
         print('')
-    elif os.path.isdir(file_or_dir1):
-        # diff [DIR/FILE] and [FILE]
-        cmplist = [(os.path.join(file_or_dir1, os.path.basename(file_or_dir2)), file_or_dir2)]
-    elif os.path.isdir(file_or_dir2):
-        # diff [FILE] and [DIR/FILE]
-        cmplist = [(file_or_dir1, os.path.join(file_or_dir2, os.path.basename(file_or_dir1)))]
     else:
-        # diff [FILE] and [FILE]
-        cmplist = [(file_or_dir1, file_or_dir2)]
+        try: file_or_dir1 = file_or_dir1.decode(options.enc_filepath) # python2.x
+        except(AttributeError): pass # python3.x
+        try: file_or_dir2 = file_or_dir2.decode(options.enc_filepath) # python2.x
+        except(AttributeError): pass # python3.x
+        
+        if   os.path.isdir(file_or_dir1):
+            # diff [DIR/FILE] and [FILE]
+            cmplist = [(os.path.join(file_or_dir1, os.path.basename(file_or_dir2)), file_or_dir2)]
+        elif os.path.isdir(file_or_dir2):
+            # diff [FILE] and [DIR/FILE]
+            cmplist = [(file_or_dir1, os.path.join(file_or_dir2, os.path.basename(file_or_dir1)))]
+        else:
+            # diff [FILE] and [FILE]
+            cmplist = [(file_or_dir1, file_or_dir2)]
     
     for file1, file2 in cmplist:
-        # 標準出力用の文字コードを明示的に指定する
-        # cygwinではなぜか正常に自動判定されなかった・・・
         
-        # for Python3.1
-        # sys.stdout = open(sys.stdout.fileno(), 'w', encoding=options.enc_stdout)
-        # for Python2.6 and Jython2.5
-        # sys.stdout = codecs.lookup(options.enc_stdout)[-1](sys.stdout)
+        # ラベルが-Lオプションで明示的に指定されていなければ、
+        # ファイル名をラベルとして使用する
+        if len(label) == 0: label.append(file1)
+        if len(label) == 1: label.append(file2)
+        
+        is_text_file1 = None
+        is_text_file2 = None
+        
+        if cmpdir:
+            label[0] = file1
+            label[1] = file2
+            
+            is_text_file1 = is_text(file1)
+            is_text_file2 = is_text(file2)
+            
+            if not (is_text_file1 and is_text_file2):
+                if is_text_file1: filetype1 = 'Text'
+                else:             filetype1 = 'Binary'
+                if is_text_file2: filetype2 = 'Text'
+                else:             filetype2 = 'Binary'
+            else:
+                filetype1 = options.enc_file1
+                filetype2 = options.enc_file2
+        else:
+            try: label[0] = label[0].decode(options.enc_filepath) # python2.x
+            except(AttributeError): pass # python3.x
+            try: label[1] = label[1].decode(options.enc_filepath) # python2.x
+            except(AttributeError): pass # python3.x
+            
+            is_text_file1 = True
+            is_text_file2 = True
+            
+            filetype1 = options.enc_file1
+            filetype2 = options.enc_file2
+        
+        print('--- ' + label[0] + ' (' + filetype1 + ')')
+        print('+++ ' + label[1] + ' (' + filetype2 + ')')
+        
+        if not (is_text_file1 and is_text_file2):
+            print('Files ' + file1 + ' and ' + file2 + ' differ')
+            print('')
+            continue
         
         # 入力ファイルを開く
         lines1 = None
         lines2 = None
         try:
-            # for Python3.1
-            # lines1 = open(file1, 'r', encoding=options.enc_file1).readlines()
-            # lines2 = open(file2, 'r', encoding=options.enc_file2).readlines()
-            # for Python2.6 and Python2.5 and Jython2.5
+            # for Python3.x
+            # lines1 = open(file1, 'r', encoding=options.enc_file1)
+            # lines2 = open(file2, 'r', encoding=options.enc_file2)
+            # for Python2.x
             lines1 = codecs.open(file1, 'r', encoding=options.enc_file1).readlines()
             lines2 = codecs.open(file2, 'r', encoding=options.enc_file2).readlines()
-        # for Python2.6 and Python2.5 and Jython2.5
+        # for Python2.x
         except IOError:
             if lines1 == None:
                 filename = file1
@@ -1413,20 +1615,16 @@ def main():
                 optionname = '--enc-file2'
             print('\'' + filename  + '\' is not encoding by \'' + encoding_text + '\'')
             print('Set correct encoding of \'' + filename + '\' by ' + optionname + ' option')
-            return 1
-        # for Python3.1 and Python2.6
+            if cmpdir:
+                print('')
+                continue
+            else:
+                return 1
+        # for Python3.x
         # except IOError as error:
         #     print(str(error))
         # except UnicodeDecodeError as error:
         #     print(str(error))
-        
-        # ラベルが-Lオプションで明示的に指定されていなければ、
-        # ファイル名をラベルとして使用する
-        if len(label) == 0: label.append(file1)
-        if len(label) == 1: label.append(file2)
-        if cmpdir != None:
-            label[0] = file1
-            label[1] = file2
         
         if options.ignore_crlf:
             lines1 = [line.rstrip('\r\n') for line in lines1]
@@ -1438,9 +1636,6 @@ def main():
         # print(unicodestr.expandtabs(8).encode('sjis'))
         # print(unicodestr.encode('sjis'))
         
-        print('--- ' + label[0] + ' (' + options.enc_file1 + ')')
-        print('+++ ' + label[1] + ' (' + options.enc_file2 + ')')
-        
         diff = original_diff(lines1, lines2, linejunk=linejunk,
                              charjunk=charjunk,
                              cutoff=options.cutoff,
@@ -1448,12 +1643,12 @@ def main():
                              cutoffchar=options.cutoffchar,
                              context=context,
                              width=options.width)
-        for line in diff: print(line.encode(options.enc_stdout))
         
+        for line in diff: print(line)
     return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
     # doctest.testmod()
     # profile.run('main()')
     # pdb.runcall(main)
