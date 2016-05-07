@@ -10,17 +10,15 @@
 """
 Whats sdiff.py
 ==============
-
 Compare two text files; generate the resulting delta.
 
 License
 =======
-
 PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.0.1'
+__version__=  '1.1.0 beta'
 
 
 # PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
@@ -74,6 +72,14 @@ __version__=  '1.0.1'
 
 import sys, difflib, optparse, unicodedata, re, codecs, doctest
 # import pprint, pdb, profile
+
+import filecmp
+import os, stat
+
+import itertools
+try:   itertools.filterfalse
+except(AttributeError):
+    itertools.filterfalse = itertools.ifilterfalse
 
 # siff.pyとは
 # ===========
@@ -273,6 +279,237 @@ def strwidthdivsync(textarray, width=180):
     
     return array
 
+
+# filecmp.dircmp
+#  |-- left_only       [files, dirs]
+#  | `-- left_list     [files, dirs] - hide - ignore
+#  |-- right_only      [files, dirs]
+#  | `-- right_list    [files, dirs] - hide - ignore
+#  `-- common          [files, dirs]
+#    |-- common_dirs   [dirs] --> subdirs
+#    |-- common_files  [files]
+#    | |-- same_files  [files]
+#    | |-- diff_files  [files]
+#    | `-- funny_files [files]
+#    `-- common_funny  [????]
+
+class dircmp(filecmp.dircmp):
+    def __init__(self, a, b, ignore=None, hide=None): # Initialize
+        filecmp.dircmp.__init__(self, a, b, ignore, hide)
+        self.left_only_dirs   = [x for x in self.left_only  if os.path.isdir (os.path.join(self.left, x))]
+        self.left_only_files  = [x for x in self.left_only  if os.path.isfile(os.path.join(self.left, x))]
+        self.left_list_dirs   = [x for x in self.left_list  if os.path.isdir (os.path.join(self.left, x))]
+        self.left_list_files  = [x for x in self.left_list  if os.path.isfile(os.path.join(self.left, x))]
+        self.right_only_dirs  = [x for x in self.right_only if os.path.isdir (os.path.join(self.right, x))]
+        self.right_only_files = [x for x in self.right_only if os.path.isfile(os.path.join(self.right, x))]
+        self.right_list_dirs  = [x for x in self.right_list if os.path.isdir (os.path.join(self.right, x))]
+        self.right_list_files = [x for x in self.right_list if os.path.isfile(os.path.join(self.right, x))]
+        pass
+    
+    def dic_dirs(self):
+        dic = {}
+        for x in self.left_only_dirs:   dic[x] = 'left_only_dir'
+        for x in self.right_only_dirs:  dic[x] = 'right_only_dir'
+        for x in self.common_dirs:      dic[x] = 'common_dir'
+        for x in self.common_funny:
+            a_path = os.path.join(self.left, x)
+            b_path = os.path.join(self.right, x)
+            
+            ok = True
+            try: a_stat = os.stat(a_path)
+            except os.error: ok = False
+            try: b_stat = os.stat(b_path)
+            except os.error: ok = False
+            
+            if ok:
+                a_type = stat.S_IFMT(a_stat.st_mode)
+                b_type = stat.S_IFMT(b_stat.st_mode)
+                if   stat.S_ISDIR(a_type) and stat.S_ISREG(b_type):
+                    dic[x] = 'common_funny_dir_to_file'
+                elif stat.S_ISREG(a_type) and stat.S_ISDIR(b_type):
+                    dic[x] = 'common_funny_file_to_dir'
+                else: pass
+            else: pass
+            pass
+        
+        return dic
+    
+    def dic_files(self):
+        dic = {}
+        for x in self.left_only_files:  dic[x] = 'left_only_file'
+        for x in self.right_only_files: dic[x] = 'right_only_file'
+        for x in self.same_files:       dic[x] = 'same_file'
+        for x in self.diff_files:       dic[x] = 'diff_file'
+        for x in self.funny_files:      dic[x] = 'funny_file'
+        for x in self.common_funny:
+            a_path = os.path.join(self.left, x)
+            b_path = os.path.join(self.right, x)
+            
+            ok = True
+            try: a_stat = os.stat(a_path)
+            except os.error: ok = False
+            try: b_stat = os.stat(b_path)
+            except os.error: ok = False
+            
+            if ok:
+                a_type = stat.S_IFMT(a_stat.st_mode)
+                b_type = stat.S_IFMT(b_stat.st_mode)
+                if   stat.S_ISDIR(a_type) and stat.S_ISREG(b_type):
+                    dic[x] = 'common_funny_dir_to_file'
+                elif stat.S_ISREG(a_type) and stat.S_ISDIR(b_type):
+                    dic[x] = 'common_funny_file_to_dir'
+                else: dic[x] = 'common_funny'
+            else: dic[x] = 'common_funny'
+            pass
+        
+        return dic
+    
+    def tree(self, recursive=True):
+        print(self.left.ljust(50) + ''.ljust(5) + self.right)
+        return self._tree(recursive)
+    
+    def _tree_only_left_right(self, which, ppath, prefix_left, prefix_right):
+        dic_dirs  = {}
+        dic_files = {}
+        
+        sub_list = list(itertools.filterfalse((self.hide+self.ignore).__contains__,
+                                              os.listdir(ppath)))
+        for x in sub_list:
+            path = os.path.join(ppath, x)
+            try: path_stat = os.stat(path)
+            except: dic_files[x] = 'only_funny'
+            else:
+                path_type = stat.S_IFMT(path_stat.st_mode)
+                if   stat.S_ISDIR(path_type): dic_dirs[x]  = 'only_funny_dir'
+                elif stat.S_ISREG(path_type): dic_files[x] = 'only_funny_file'
+                else: dic_files[x] = 'only_funny_file'
+                pass
+            pass
+        
+        dirs = dic_dirs
+        for i, key in enumerate(sorted(dirs.keys())):
+            if   which == 'left':
+                left = '|-- ' + key + '/'
+                right = ''
+                flag = '<'
+                subprefix_left  = prefix_left + '| '
+                subprefix_right = prefix_right
+            elif which == 'right':
+                left = ''
+                right = '|-- ' + key + '/'
+                flag = '>'
+                subprefix_left  = prefix_left
+                subprefix_right = prefix_right + '| '
+                pass
+            print((prefix_left + left).ljust(50) + flag.ljust(5) + (prefix_right+ right))
+            self._tree_only_left_right(which, os.path.join(ppath, key),
+                                       subprefix_left, subprefix_right)
+            pass
+        
+        files = dic_files
+        for i, key in enumerate(sorted(files.keys())):
+            if   which == 'left':
+                left = '|-- ' + key
+                right = ''
+                flag = '<'
+            elif which == 'right':
+                left = ''
+                right = '|-- ' + key
+                flag = '>'
+                pass
+            print((prefix_left + left).ljust(50) + flag.ljust(5) + (prefix_right+ right))
+            pass
+        
+        return
+    
+    def _tree(self, recursive=False, prefix='', diff_file_list=None):
+        if diff_file_list == None: diff_file_list = []
+        
+        line = '|'
+        dirs = self.dic_dirs()
+        for i, key in enumerate(sorted(dirs.keys())):
+            subdircmp = None
+            subdir_only = None
+            if   (dirs[key] == 'left_only_dir' or
+                  dirs[key] == 'common_funny_dir_to_file'):
+                left  = '|-- ' + key + '/'
+                right = '|'
+                flag  = '<'
+                if recursive: subdir_only = 'left'
+                pass
+            elif (dirs[key] == 'right_only_dir' or
+                  dirs[key] == 'common_funny_file_to_dir'):
+                left  = '|'
+                right = '|-- ' + key + '/'
+                flag  = '>'
+                if recursive: subdir_only = 'right'
+                pass
+            elif dirs[key] == 'common_dir':
+                left  = '|-- ' + key + '/'
+                right = '|-- ' + key + '/'
+                if recursive:
+                    a_x = os.path.join(self.left, key)
+                    b_x = os.path.join(self.right, key)
+                    subdircmp = dircmp(a_x, b_x, self.ignore, self.hide)
+                    flag  = ' '
+                else: flag  = '?'
+                pass
+            else: raise ''
+            print((prefix + left).ljust(50) + flag.ljust(5) + (prefix + right))
+            
+            if subdircmp != None:
+                diff_file_list += subdircmp._tree(recursive=True, prefix=prefix+'| ')
+                pass
+            elif subdir_only != None:
+                if   subdir_only == 'left':
+                    x = os.path.join(self.left,  key)
+                elif subdir_only == 'right':
+                    x = os.path.join(self.right, key)
+                    pass
+                self._tree_only_left_right(subdir_only, x,
+                                           prefix_left=prefix+'| ',
+                                           prefix_right=prefix+'| ')
+                pass
+            pass
+        
+        files = self.dic_files()
+        for i, key in enumerate(sorted(files.keys())):
+            if   (files[key] == 'left_only_file' or
+                  files[key] == 'common_funny_file_to_dir'):
+                left  = '|-- ' + key
+                right = '|'
+                flag  = '<'
+            elif (files[key] == 'right_only_file' or
+                  files[key] == 'common_funny_dir_to_file'):
+                left  = '|'
+                right = '|-- ' + key
+                flag  = '>'
+            elif files[key] == 'same_file':
+                left  = '|-- ' + key
+                right = '|-- ' + key
+                flag  = ' '
+            elif files[key] == 'diff_file':
+                left  = '|-- ' + key
+                right = '|-- ' + key
+                flag  = '|'
+                diff_file_list.append((os.path.join(self.left, key),
+                                       os.path.join(self.right, key)))
+            elif files[key] == 'funny_file':
+                left  = '|-- ' + key
+                right = '|-- ' + key
+                flag  = '?'
+            elif files[key] == 'common_funny':
+                left  = '|-- ' + key
+                right = '|-- ' + key
+                flag  = '?'
+            else: raise ''
+            print((prefix + left).ljust(50) + flag.ljust(5) + (prefix + right))
+            pass
+        return diff_file_list
+    
+    pass
+
+
 # テキスト差分取得クラス
 # 内部処理にdifflibのSequenceMatcherクラスを使用している
 class Differ:
@@ -383,7 +620,7 @@ class Differ:
          (('>', None, None, 2, 'emu\n'), None),
          None]
         
-        >>> # like sdiff
+        # like sdiff
         >>> pprint.pprint(list(Differ(cutoff=0, fuzzy=1).compare(text1, text2)), width=100)
         [(('|', 0, 'one\n', 0, 'ore\n'), [(' ', 'o', 'o'), ('!', 'n', 'r'), (' ', 'e\n', 'e\n')]),
          (('|', 1, 'two\n', 1, 'tree\n'), [(' ', 't', 't'), ('!', 'wo', 'ree'), (' ', '\n', '\n')]),
@@ -838,7 +1075,6 @@ class Differ:
         """
         
         Example:
-        
         >>> import pprint
         >>> pprint.pprint(Differ.formatlinetext(1, 2,
         ...                                     [('!', 'bbb', 'aaaaa'),
@@ -1016,6 +1252,9 @@ def main():
     parser.add_option('-w', '--width', type='int', default=130,
                       action='callback', callback=check_width,
                       help='Set number of width  (default 130)')
+    # -rオプション: ディレクトリ比較時にサブディレクトリが見つかった場合、再帰的に比較する
+    parser.add_option('-r', '--recursive', action='store_true', default=False,
+                      help='Recursively compare any subdirectories found.')
     def check_ratio(option, opt_str, value, parser):
         if not 0.0 <= value <= 1.0:
             raise optparse.OptionValueError(opt_str + ' option invalid.'
@@ -1094,69 +1333,15 @@ def main():
     
     # オプション解析を実行
     (options, args) = parser.parse_args()
-    # 必須引数がまったく与えられていない場合は
-    if len(args) == 0:
-        # 使い方が分かっていないと判断し、ヘルプを表示して終了
-        parser.print_help()
-        sys.exit(1)
-    # それ以外で必須引数の個数が所定と異なる場合は
-    elif len(args) != 2:
+    # 必須引数の個数が所定と異なる場合は
+    if len(args) != 2:
         # メッセージを表示して終了
         parser.error('Need to specify both a file1 and file2')
     
     # 引数を変数に設定
-    file1, file2 = args
+    file_or_dir1, file_or_dir2 = args
     context = options.context
     full = not options.full
-    
-    # 標準出力用の文字コードを明示的に指定する
-    # cygwinではなぜか正常に自動判定されなかった・・・
-    
-    # for Python3.1
-    # sys.stdout = open(sys.stdout.fileno(), 'w', encoding=options.enc_stdout)
-    # for Python2.6 and Jython2.5
-    # sys.stdout = codecs.lookup(options.enc_stdout)[-1](sys.stdout)
-    
-    # 入力ファイルを開く
-    lines1 = None
-    lines2 = None
-    try:
-        # for Python3.1
-        # lines1 = open(file1, 'r', encoding=options.enc_file1).readlines()
-        # lines2 = open(file2, 'r', encoding=options.enc_file2).readlines()
-        # for Python2.6 and Python2.5 and Jython2.5
-        lines1 = codecs.open(file1, 'r', encoding=options.enc_file1).readlines()
-        lines2 = codecs.open(file2, 'r', encoding=options.enc_file2).readlines()
-    # for Python2.6 and Python2.5 and Jython2.5
-    except IOError:
-        if lines1 == None:
-            filename = file1
-        else:
-            filename = file2
-        print('[Errno 2] No such file or directory: \'' + filename + '\'')
-        return 1
-    except UnicodeDecodeError:
-        if lines1 == None:
-            filename = file1
-            encoding_text = options.enc_file1
-            optionname = '--enc-file1'
-        else:
-            filename = file2
-            encoding_text = options.enc_file2
-            optionname = '--enc-file2'
-        print('\'' + filename  + '\' is not encoding by \'' + encoding_text + '\'')
-        print('Set correct encoding of \'' + filename + '\' by ' + optionname + ' option')
-        return 1
-    # for Python3.1 and Python2.6
-    # except IOError as error:
-    #     print(str(error))
-    # except UnicodeDecodeError as error:
-    #     print(str(error))
-    
-    # ラベルが-Lオプションで明示的に指定されていなければ、
-    # ファイル名をラベルとして使用する
-    if len(label) == 0: label.append(file1)
-    if len(label) == 1: label.append(file2)
     
     if options.full:
         context = None
@@ -1172,29 +1357,99 @@ def main():
         charjunk = lambda char: char in options.charjunk
     else:
         charjunk = None
+
+    cmpdir = None
+    cmplist = []
+    if   os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
+        # diff [DIR] and [DIR]
+        cmpdir = dircmp(file_or_dir1, file_or_dir2)
+        cmplist = cmpdir.tree(recursive=options.recursive)
+        print('')
+    elif os.path.isdir(file_or_dir1):
+        # diff [DIR/FILE] and [FILE]
+        cmplist = [(os.path.join(file_or_dir1, os.path.basename(file_or_dir2)), file_or_dir2)]
+    elif os.path.isdir(file_or_dir2):
+        # diff [FILE] and [DIR/FILE]
+        cmplist = [(file_or_dir1, os.path.join(file_or_dir2, os.path.basename(file_or_dir1)))]
+    else:
+        # diff [FILE] and [FILE]
+        cmplist = [(file_or_dir1, file_or_dir2)]
     
-    if options.ignore_crlf:
-        lines1 = [line.rstrip('\r\n') for line in lines1]
-        lines2 = [line.rstrip('\r\n') for line in lines2]
-    
-    # expandtabsは幅広文字に対応して居ないので自前で対処する
-    # 以下のコードを試せば分かる
-    # unicodestr = u'aあ\tb'
-    # print(unicodestr.expandtabs(8).encode('sjis'))
-    # print(unicodestr.encode('sjis'))
-    
-    print('--- ' + label[0] + ' (' + options.enc_file1 + ')')
-    print('+++ ' + label[1] + ' (' + options.enc_file2 + ')')
-    
-    diff = original_diff(lines1, lines2, linejunk=linejunk,
-                         charjunk=charjunk,
-                         cutoff=options.cutoff,
-                         fuzzy=options.fuzzy,
-                         cutoffchar=options.cutoffchar,
-                         context=context,
-                         width=options.width)
-    for line in diff: print(line.encode(options.enc_stdout))
-    
+    for file1, file2 in cmplist:
+        # 標準出力用の文字コードを明示的に指定する
+        # cygwinではなぜか正常に自動判定されなかった・・・
+        
+        # for Python3.1
+        # sys.stdout = open(sys.stdout.fileno(), 'w', encoding=options.enc_stdout)
+        # for Python2.6 and Jython2.5
+        # sys.stdout = codecs.lookup(options.enc_stdout)[-1](sys.stdout)
+        
+        # 入力ファイルを開く
+        lines1 = None
+        lines2 = None
+        try:
+            # for Python3.1
+            # lines1 = open(file1, 'r', encoding=options.enc_file1).readlines()
+            # lines2 = open(file2, 'r', encoding=options.enc_file2).readlines()
+            # for Python2.6 and Python2.5 and Jython2.5
+            lines1 = codecs.open(file1, 'r', encoding=options.enc_file1).readlines()
+            lines2 = codecs.open(file2, 'r', encoding=options.enc_file2).readlines()
+        # for Python2.6 and Python2.5 and Jython2.5
+        except IOError:
+            if lines1 == None:
+                filename = file1
+            else:
+                filename = file2
+            print('[Errno 2] No such file or directory: \'' + filename + '\'')
+            return 1
+        except UnicodeDecodeError:
+            if lines1 == None:
+                filename = file1
+                encoding_text = options.enc_file1
+                optionname = '--enc-file1'
+            else:
+                filename = file2
+                encoding_text = options.enc_file2
+                optionname = '--enc-file2'
+            print('\'' + filename  + '\' is not encoding by \'' + encoding_text + '\'')
+            print('Set correct encoding of \'' + filename + '\' by ' + optionname + ' option')
+            return 1
+        # for Python3.1 and Python2.6
+        # except IOError as error:
+        #     print(str(error))
+        # except UnicodeDecodeError as error:
+        #     print(str(error))
+        
+        # ラベルが-Lオプションで明示的に指定されていなければ、
+        # ファイル名をラベルとして使用する
+        if len(label) == 0: label.append(file1)
+        if len(label) == 1: label.append(file2)
+        if cmpdir != None:
+            label[0] = file1
+            label[1] = file2
+        
+        if options.ignore_crlf:
+            lines1 = [line.rstrip('\r\n') for line in lines1]
+            lines2 = [line.rstrip('\r\n') for line in lines2]
+        
+        # expandtabsは幅広文字に対応していないので自前で対処する
+        # 以下のコードを試せば分かる
+        # unicodestr = u'aあ\tb'
+        # print(unicodestr.expandtabs(8).encode('sjis'))
+        # print(unicodestr.encode('sjis'))
+        
+        print('--- ' + label[0] + ' (' + options.enc_file1 + ')')
+        print('+++ ' + label[1] + ' (' + options.enc_file2 + ')')
+        
+        diff = original_diff(lines1, lines2, linejunk=linejunk,
+                             charjunk=charjunk,
+                             cutoff=options.cutoff,
+                             fuzzy=options.fuzzy,
+                             cutoffchar=options.cutoffchar,
+                             context=context,
+                             width=options.width)
+        for line in diff: print(line.encode(options.enc_stdout))
+        
     return 0
 
 if __name__ == "__main__":
