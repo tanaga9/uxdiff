@@ -14,12 +14,12 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.1.1'
+__version__=  '1.2.0'
 
 
 # The MIT License (MIT)
 # --------------------------------------------
-# Copyright (c) 2011 Tanaga
+# Copyright (c) 2011,2013 Tanaga
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"),
@@ -39,7 +39,7 @@ __version__=  '1.1.1'
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
-import sys, difflib, optparse, unicodedata, re, codecs, doctest
+import sys, difflib, optparse, unicodedata, re, codecs
 # import pprint, pdb, profile
 
 import filecmp
@@ -269,6 +269,298 @@ def strwidthdivsync(textarray, width=180):
     return array
 
 
+
+class unidiff(object):
+    # https://github.com/matiasb/python-unidiff
+
+    # The MIT License (MIT)
+    # Copyright (c) 2012 Matias Bordese
+    #
+    # Permission is hereby granted, free of charge, to any person obtaining a copy
+    # of this software and associated documentation files (the "Software"), to deal
+    # in the Software without restriction, including without limitation the rights
+    # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    # copies of the Software, and to permit persons to whom the Software is
+    # furnished to do so, subject to the following conditions:
+    #
+    # The above copyright notice and this permission notice shall be included in all
+    # copies or substantial portions of the Software.
+    #
+    # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    # IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+    # OR OTHER DEALINGS IN THE SOFTWARE.
+    
+    
+    """Classes used by the unified diff parser to keep the diff data
+    and Unified diff parser."""
+    
+    LINE_TYPE_ADD = '+'
+    LINE_TYPE_DELETE = '-'
+    LINE_TYPE_CONTEXT = ' '
+    
+    
+    class Hunk(object):
+        """Each of the modified blocks of a file."""
+    
+        def __init__(self, src_start=0, src_len=0, tgt_start=0, tgt_len=0,
+                     section_header=''):
+            self.source_start = int(src_start)
+            self.source_length = int(src_len)
+            self.target_start = int(tgt_start)
+            self.target_length = int(tgt_len)
+            self.section_header = section_header
+            self.source_lines = []
+            self.target_lines = []
+            self.source_types = []
+            self.target_types = []
+            self.modified = 0
+            self.added = 0
+            self.deleted = 0
+            self._unidiff_generator = None
+    
+        def __repr__(self):
+            return "<@@ %d,%d %d,%d @@ %s>" % (self.source_start,
+                                               self.source_length,
+                                               self.target_start,
+                                               self.target_length,
+                                               self.section_header)
+    
+        def as_unified_diff(self):
+            """Output hunk data in unified diff format."""
+            if self._unidiff_generator is None:
+                self._unidiff_generator = difflib.unified_diff(self.source_lines,
+                                                               self.target_lines)
+                # throw the header information
+                for i in range(3):
+                    self._unidiff_generator.next()
+    
+            head = "@@ -%d,%d +%d,%d @@\n" % (self.source_start, self.source_length,
+                                              self.target_start, self.target_length)
+            yield head
+            while True:
+                yield self._unidiff_generator.next()
+    
+        def is_valid(self):
+            """Check hunk header data matches entered lines info."""
+            return (len(self.source_lines) == self.source_length and
+                    len(self.target_lines) == self.target_length)
+    
+        def append_context_line(self, line):
+            """Add a new context line to the hunk."""
+            self.source_lines.append(line)
+            self.target_lines.append(line)
+            self.source_types.append(unidiff.LINE_TYPE_CONTEXT)
+            self.target_types.append(unidiff.LINE_TYPE_CONTEXT)
+    
+        def append_added_line(self, line):
+            """Add a new added line to the hunk."""
+            self.target_lines.append(line)
+            self.target_types.append(unidiff.LINE_TYPE_ADD)
+            self.added += 1
+    
+        def append_deleted_line(self, line):
+            """Add a new deleted line to the hunk."""
+            self.source_lines.append(line)
+            self.source_types.append(unidiff.LINE_TYPE_DELETE)
+            self.deleted += 1
+    
+        def add_to_modified_counter(self, mods):
+            """Update the number of lines modified in the hunk."""
+            self.deleted -= mods
+            self.added -= mods
+            self.modified += mods
+    
+    
+    class PatchedFile(list):
+        """Data of a patched file, each element is a Hunk."""
+    
+        def __init__(self, source='', target=''):
+            super(unidiff.PatchedFile, self).__init__()
+            self.source_file = source
+            self.target_file = target
+    
+        def __repr__(self):
+            return "<%s: %s>" % (self.target_file,
+                                 super(unidiff.PatchedFile, self).__repr__())
+    
+        def __str__(self):
+            s = self.path + "\n"
+            for e in enumerate([repr(e) for e in self]):
+                s += "Hunk #%s: %s\n" % e
+            s += "\n"
+            return s
+    
+        def as_unified_diff(self):
+            """Output file changes in unified diff format."""
+            source = "--- %s\n" % self.source_file
+            yield source
+    
+            target = "+++ %s\n" % self.target_file
+            yield target
+    
+            for hunk in self:
+                hunk_data = hunk.as_unified_diff()
+                for line in hunk_data:
+                    yield line
+    
+        @property
+        def path(self):
+            """Return the file path abstracted from VCS."""
+            # TODO: improve git/hg detection
+            if (self.source_file.startswith('a/') and
+                    self.target_file.startswith('b/')):
+                filepath = self.source_file[2:]
+            elif (self.source_file.startswith('a/') and
+                    self.target_file == '/dev/null'):
+                filepath = self.source_file[2:]
+            elif (self.target_file.startswith('b/') and
+                    self.source_file == '/dev/null'):
+                filepath = self.target_file[2:]
+            else:
+                filepath = self.source_file
+            return filepath
+    
+        @property
+        def added(self):
+            """Return the file total added lines."""
+            return sum([hunk.added for hunk in self])
+    
+        @property
+        def deleted(self):
+            """Return the file total deleted lines."""
+            return sum([hunk.deleted for hunk in self])
+    
+        @property
+        def modified(self):
+            """Return the file total modified lines."""
+            return sum([hunk.modified for hunk in self])
+    
+        @property
+        def is_added_file(self):
+            """Return True if this patch adds a file."""
+            return (len(self) == 1 and self[0].source_start == 0 and
+                    self[0].source_length == 0)
+    
+        @property
+        def is_deleted_file(self):
+            """Return True if this patch deletes a file."""
+            return (len(self) == 1 and self[0].target_start == 0 and
+                    self[0].target_length == 0)
+    
+        def is_modified_file(self):
+            """Return True if this patch modifies a file."""
+            return not (self.is_added_file or self.is_deleted_file)
+    
+    
+    class PatchSet(list):
+        """A list of PatchedFiles."""
+    
+        def as_unified_diff(self):
+            """Output patch data in unified diff format.
+    
+            It won't necessarily match the original unified diff,
+            but it should be equivalent.
+            """
+            for patched_file in self:
+                data = patched_file.as_unified_diff()
+                for line in data:
+                    yield line
+    
+        def __str__(self):
+            return '[' + ','.join([str(e) for e in self]) + ']'
+
+    # """Useful constants and regexes used by the module."""
+    
+    RE_SOURCE_FILENAME = re.compile(r'^--- (?P<filename>[^\t\n]+)')
+    RE_TARGET_FILENAME = re.compile(r'^\+\+\+ (?P<filename>[^\t\n]+)')
+    
+    # @@ (source offset, length) (target offset, length) @@ (section header)
+    RE_HUNK_HEADER = re.compile(
+        r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))?\ @@[ ]?(.*)")
+    
+    #   kept line (context)
+    # + added line
+    # - deleted line
+    # \ No newline case (ignore)
+    RE_HUNK_BODY_LINE = re.compile(r'^([- \+\\])')
+
+    class UnidiffParseException(Exception):
+        """Exception when parsing the diff data."""
+        pass
+    
+    
+    @staticmethod
+    def _parse_hunk(diff, source_start, source_len, target_start, target_len,
+                    section_header):
+        """Parse a diff hunk details."""
+        hunk = unidiff.Hunk(source_start, source_len, target_start, target_len,
+                            section_header)
+        modified = 0
+        deleting = 0
+        for line in diff:
+            valid_line = unidiff.RE_HUNK_BODY_LINE.match(line)
+            if not valid_line:
+                raise unidiff.UnidiffParseException('Hunk diff data expected')
+    
+            action = valid_line.group(0)
+            original_line = line[1:]
+            if action == unidiff.LINE_TYPE_ADD:
+                hunk.append_added_line(original_line)
+                # modified lines == deleted immediately followed by added
+                if deleting > 0:
+                    modified += 1
+                    deleting -= 1
+            elif action == unidiff.LINE_TYPE_DELETE:
+                hunk.append_deleted_line(original_line)
+                deleting += 1
+            elif action == unidiff.LINE_TYPE_CONTEXT:
+                hunk.append_context_line(original_line)
+                hunk.add_to_modified_counter(modified)
+                # reset modified auxiliar variables
+                deleting = 0
+                modified = 0
+    
+            # check hunk len(old_lines) and len(new_lines) are ok
+            if hunk.is_valid():
+                break
+    
+        return hunk
+    
+    @staticmethod
+    def parse_unidiff(diff):
+        """Unified diff parser, takes a file-like object as argument."""
+        ret = unidiff.PatchSet()
+        current_patch = None
+    
+        for line in diff:
+            # check for source file header
+            check_source = unidiff.RE_SOURCE_FILENAME.match(line)
+            if check_source:
+                source_file = check_source.group('filename')
+                current_patch = None
+                continue
+    
+            # check for target file header
+            check_target = unidiff.RE_TARGET_FILENAME.match(line)
+            if check_target:
+                target_file = check_target.group('filename')
+                current_patch = unidiff.PatchedFile(source_file, target_file)
+                ret.append(current_patch)
+                continue
+    
+            # check for hunk header
+            re_hunk_header = unidiff.RE_HUNK_HEADER.match(line)
+            if re_hunk_header:
+                hunk_info = re_hunk_header.groups()
+                hunk = unidiff._parse_hunk(diff, *hunk_info)
+                current_patch.append(hunk)
+        return ret
+    pass
+
 # テキスト差分取得クラス
 # 内部処理にdifflibのSequenceMatcherクラスを使用している
 class Differ:
@@ -378,8 +670,8 @@ class Differ:
          (('|', 2, 'three\n', 1, 'tree\n'), [(' ', 't', 't'), ('-', 'h', None), (' ', 'ree\n', 'ree\n')]),
          (('>', None, None, 2, 'emu\n'), None),
          None]
-        
-        # like sdiff
+        >>>
+        >>> # like sdiff
         >>> pprint.pprint(list(Differ(cutoff=0, fuzzy=1).compare(text1, text2)), width=100)
         [(('|', 0, 'one\n', 0, 'ore\n'), [(' ', 'o', 'o'), ('!', 'n', 'r'), (' ', 'e\n', 'e\n')]),
          (('|', 1, 'two\n', 1, 'tree\n'), [(' ', 't', 't'), ('!', 'wo', 'ree'), (' ', '\n', '\n')]),
@@ -463,7 +755,7 @@ class Differ:
         similar pair. Lots of work, but often worth it.
         
         Example:
-        
+
         >>> text1 = '''teststring
         ... '''.splitlines(1)
         >>>
@@ -472,15 +764,15 @@ class Differ:
         >>>
         >>> import pprint
         >>>
-        
+        >>>
         >>> #pprint.pprint(list(Differ().compare(text1, text2)), width=100)
-        
+        >>>
         >>> results = Differ()._fancy_replace(text1, 0, 1,
         ...                                   text2, 0, 1)
         >>> pprint.pprint(list(results))
         [(('<', 0, 'teststring\n', None, None), None),
          (('>', None, None, 0, 'poststream\n'), None)]
-        
+        >>>
         >>> results = Differ(cutoff=0, fuzzy=1)._fancy_replace(text1, 0, 1,
         ...                                                    text2, 0, 1)
         >>> pprint.pprint(list(results))
@@ -489,7 +781,7 @@ class Differ:
            (' ', 'ststr', 'ststr'),
            ('!', 'ing', 'eam'),
            (' ', '\n', '\n')])]
-        
+        >>>
         >>> results = Differ(cutoff=0, fuzzy=1, cutoffchar=True)._fancy_replace(text1, 0, 1,
         ...                                                                     text2, 0, 1)
         >>> pprint.pprint(list(results))
@@ -834,6 +1126,7 @@ class Differ:
         """
         
         Example:
+        
         >>> import pprint
         >>> pprint.pprint(Differ.formatlinetext(1, 2,
         ...                                     [('!', 'bbb', 'aaaaa'),
@@ -1350,6 +1643,215 @@ def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
             heads1.pop()
             heads2.pop()
 
+def parse_unidiff(diff):
+    r"""Unified diff parser, takes a file-like object as argument.
+
+    Example:
+    
+    >>> hg_diff = r'''diff -r dab26450e4b1 text2.txt
+    ... --- a/text2.txt     Sun Dec 15 17:38:49 2013 +0900
+    ... +++ b/text2.txt     Sun Dec 15 17:43:09 2013 +0900
+    ... @@ -1,3 +1,3 @@
+    ... -hoge
+    ... +hogee
+    ... +bar
+    ...  foo
+    ... -bar
+    ... '''
+    >>> diffs = parse_unidiff((line for line in hg_diff.splitlines()))
+    >>> for (flag, diff) in diffs:
+    ...     if flag: print(diff)
+    ...     else:
+    ...         for hunk in diff:
+    ...             import pprint
+    ...             pprint.pprint(hunk.source_lines)
+    ...             pprint.pprint(hunk.target_lines)
+    ... 
+    diff -r dab26450e4b1 text2.txt
+    --- a/text2.txt     Sun Dec 15 17:38:49 2013 +0900
+    +++ b/text2.txt     Sun Dec 15 17:43:09 2013 +0900
+    ['hoge', 'foo', 'bar']
+    ['hogee', 'bar', 'foo']
+    >>> 
+    """
+    current_patch = None
+    source_file = None
+
+    for line in diff:
+        # check for source file header
+        check_source = unidiff.RE_SOURCE_FILENAME.match(line)
+        if check_source:
+            source_file = check_source.group('filename')
+            if current_patch is not None:
+                yield (False, current_patch) # yield not junk
+            current_patch = None
+            yield (True, line.rstrip('\r\n')) # yield source header
+            continue
+    
+        # check for target file header
+        check_target = unidiff.RE_TARGET_FILENAME.match(line)
+        if source_file and check_target:
+            target_file = check_target.group('filename')
+            current_patch = unidiff.PatchedFile(source_file, target_file)
+            yield (True, line.rstrip('\r\n'))  # yield target header
+            continue
+
+        source_file = None
+        
+        # check for hunk header
+        re_hunk_header = unidiff.RE_HUNK_HEADER.match(line)
+        if current_patch is not None and re_hunk_header:
+            hunk_info = re_hunk_header.groups()
+            hunk = unidiff._parse_hunk(diff, *hunk_info)
+            current_patch.append(hunk)
+        else:
+            if current_patch is not None:
+                yield (False, current_patch) # yield not junk
+                current_patch = None
+            yield (True, line.rstrip('\r\n')) # yield junk
+
+    if current_patch is not None:
+        yield (False, current_patch) # yield not junk
+    return
+
+def parse_unidiff_and_original_diff(
+        udiffs, linejunk, charjunk, cutoff, fuzzy, cutoffchar, context, width):
+    r"""
+
+    Example:
+    
+    >>> svn_diff = u'''Index: some.png
+    ... ===================================================================
+    ... Cannot display: file marked as a binary type.
+    ... svn:mime-type = application/octet-stream
+    ... Index: text1.txt
+    ... ===================================================================
+    ... --- text1.txt       (revision 1)
+    ... +++ text1.txt       (working copy)
+    ... @@ -1,4 +1,4 @@
+    ...  1. Beautiful is better than ugly.
+    ... -2. Explicit is better than implicit.
+    ... -3. Simple is better than complex.
+    ... -4. Complex is better than complicated.
+    ... +3.   Simple is better than complex.
+    ... +4. Complicated is better than complex.
+    ... +5. Flat is better than nested.
+    ... '''
+    >>> diff = parse_unidiff_and_original_diff(
+    ...     (line for line in svn_diff.splitlines()),
+    ...     linejunk=None, charjunk=None,
+    ...     cutoff=0.1, fuzzy=0,
+    ...     cutoffchar=False, context=5,
+    ...     width=100)
+    >>> for line in diff: print('\'' + line + '\'')
+    'Index: some.png'
+    '==================================================================='
+    'Cannot display: file marked as a binary type.'
+    'svn:mime-type = application/octet-stream'
+    'Index: text1.txt'
+    '==================================================================='
+    '--- text1.txt       (revision 1)'
+    '+++ text1.txt       (working copy)'
+    '     1|1. Beautiful is better than ugly.                1|1. Beautiful is better than ugly.'
+    '     2|2. Explicit is better than implicit.      <       |'
+    '     3|3. Simple is better than complex.         |      2|3.   Simple is better than complex.'
+    '     4|4. Complex is better than complicated.    |      3|4. Complicated is better than complex.'
+    '      |                                          >      4|5. Flat is better than nested.'
+    ''
+    '[     ]      |  ++                               '
+    '[ <-  ]     3|3.   Simple is better than complex.'
+    '[  -> ]     2|3.   Simple is better than complex.'
+    ''
+    '[     ]      |        ++++ !                     ---- ! '
+    '[ <-  ]     4|4. Compl    ex is better than complicated.'
+    '[  -> ]     3|4. Complicated is better than compl    ex.'
+    ''
+    >>>
+    >>> hg_diff = u'''diff -r dab26450e4b1 some.png
+    ... Binary file some.png has changed
+    ... diff -r dab26450e4b1 text1.txt
+    ... --- a/text1.txt     Sun Dec 15 17:38:49 2013 +0900
+    ... +++ b/text1.txt     Sun Dec 15 17:43:09 2013 +0900
+    ... @@ -1,4 +1,4 @@
+    ...  1. Beautiful is better than ugly.
+    ... -2. Explicit is better than implicit.
+    ... -3. Simple is better than complex.
+    ... -4. Complex is better than complicated.
+    ... +3.   Simple is better than complex.
+    ... +4. Complicated is better than complex.
+    ... +5. Flat is better than nested.
+    ... '''
+    >>> diff = parse_unidiff_and_original_diff(
+    ...     (line for line in hg_diff.splitlines()),
+    ...     linejunk=None, charjunk=None,
+    ...     cutoff=0.1, fuzzy=0,
+    ...     cutoffchar=False, context=5,
+    ...     width=100)
+    >>> for line in diff: print('\'' + line + '\'')
+    'diff -r dab26450e4b1 some.png'
+    'Binary file some.png has changed'
+    'diff -r dab26450e4b1 text1.txt'
+    '--- a/text1.txt     Sun Dec 15 17:38:49 2013 +0900'
+    '+++ b/text1.txt     Sun Dec 15 17:43:09 2013 +0900'
+    '     1|1. Beautiful is better than ugly.                1|1. Beautiful is better than ugly.'
+    '     2|2. Explicit is better than implicit.      <       |'
+    '     3|3. Simple is better than complex.         |      2|3.   Simple is better than complex.'
+    '     4|4. Complex is better than complicated.    |      3|4. Complicated is better than complex.'
+    '      |                                          >      4|5. Flat is better than nested.'
+    ''
+    '[     ]      |  ++                               '
+    '[ <-  ]     3|3.   Simple is better than complex.'
+    '[  -> ]     2|3.   Simple is better than complex.'
+    ''
+    '[     ]      |        ++++ !                     ---- ! '
+    '[ <-  ]     4|4. Compl    ex is better than complicated.'
+    '[  -> ]     3|4. Complicated is better than compl    ex.'
+    ''
+    >>> 
+    """
+    diffs = parse_unidiff(udiffs)
+    for (flag, diff) in diffs:
+        if flag: yield diff
+        else:
+            for hunk in diff:
+                lines1 = [expandtabs(line, tabsize=4) for line in hunk.source_lines]
+                lines2 = [expandtabs(line, tabsize=4) for line in hunk.target_lines]
+                
+                # 差分を抽出
+                differ = Differ(linejunk=linejunk,
+                                charjunk=charjunk,
+                                cutoff=cutoff,
+                                cutoffchar=cutoffchar,
+                                fuzzy=fuzzy,
+                                context=context)
+                
+                textlinediffs = []
+                for diff in differ.compare(lines1, lines2):
+                    if diff == None:
+                        yield ''
+                        for textlinediff in textlinediffs:
+                            for textline in textlinediff:
+                                yield textline
+                            yield ''
+                        textlinediffs = []
+                        continue
+                        
+                    ((tag, num1, text1, num2, text2), linediff) = diff
+                        
+                    for line in differ.formattext(
+                            tag,
+                            hunk.source_start - 1 + num1 if num1 is not None else None,
+                            text1,
+                            hunk.target_start - 1 + num2 if num2 is not None else None,
+                            text2,
+                            width):
+                        yield line
+                    if tag == '|':
+                        textlinediffs.append(differ.formatlinetext(
+                            hunk.source_start - 1 + num1,
+                            hunk.target_start - 1 + num2,
+                            linediff, width))
+    return
 
 def main():
     """main function"""
@@ -1359,7 +1861,7 @@ def main():
                                    ' [ -f | -c ]'
                                    ' [ -w WIDTH ]'
                                    ' [ other options ]'
-                                   ' file_or_dir_1 file_or_dir_2',
+                                   ' [file_or_dir_1 file_or_dir_2]',
                                    version='%prog ' + __version__)
     # -fオプション: 差分を抽出した箇所以外のテキスト全体を表示する
     parser.add_option('-f', '--full', action='store_true', default=False,
@@ -1426,6 +1928,10 @@ def main():
     parser.add_option('', '--enc-file2', metavar='ENCODING', type='string', default='utf-8',
                       action='callback', callback=check_codec,
                       help='Set encoding of rightside inputfile2 (default utf-8)')
+    # --enc-stdinオプション: Unified形式の差分を標準入力する際のコーデックを指定する（デフォルトはsys.getdefaultencoding）
+    parser.add_option('', '--enc-stdin', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
+                      action='callback', callback=check_codec,
+                      help='Set encoding of standard input (default `sys.getdefaultencoding()`)')
     # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはsys.getdefaultencoding）
     parser.add_option('', '--enc-stdout', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
                       action='callback', callback=check_codec,
@@ -1456,6 +1962,7 @@ def main():
                       help='label of file1 and file2(can set 2 times)')
     
     def _test(option, opt_str, value, parser):
+        import doctest
         doctest.testmod(verbose=True)
         parser.exit()
     # --testオプション: テストコードを実行
@@ -1464,21 +1971,29 @@ def main():
     # オプション解析を実行
     (options, args) = parser.parse_args()
     # 必須引数の個数が所定と異なる場合は
-    if len(args) != 2:
+    if   len(args) == 0:
+        pass
+    elif len(args) == 2:
+        # 引数を変数に設定
+        file_or_dir1, file_or_dir2 = args
+    else:
         # メッセージを表示して終了
         parser.error('Need to specify both a file1 and file2')
-    
-    # 引数を変数に設定
-    file_or_dir1, file_or_dir2 = args
-    
+        
     context = options.context
     full = not options.full
+
+    try: stdin_buffer = sys.stdin.buffer
+    except(AttributeError):
+        sys.stdin = codecs.getreader(options.enc_stdin)(sys.stdin) # python2.x
+    else:
+        sys.stdin = io.TextIOWrapper(stdin_buffer, encoding=options.enc_stdin) # python3.x
     
-    try: buffer = sys.stdout.buffer
+    try: stdout_buffer = sys.stdout.buffer
     except(AttributeError):
         sys.stdout = codecs.getwriter(options.enc_stdout)(sys.stdout) # python2.x
     else:
-        sys.stdout = io.TextIOWrapper(buffer, encoding=options.enc_stdout) # python3.x
+        sys.stdout = io.TextIOWrapper(stdout_buffer, encoding=options.enc_stdout) # python3.x
     
     if options.full:
         context = None
@@ -1497,7 +2012,15 @@ def main():
     
     cmpdir = False
     cmplist = []
-    if   os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
+    if len(args) == 0:
+        for line in parse_unidiff_and_original_diff(
+                sys.stdin,
+                linejunk=linejunk, charjunk=charjunk,
+                cutoff=options.cutoff, fuzzy=options.fuzzy,
+                cutoffchar=options.cutoffchar,
+                context=context, width=options.width):
+            print(line)
+    elif os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
         # diff [DIR] and [DIR]
         cmpdir = True
         
