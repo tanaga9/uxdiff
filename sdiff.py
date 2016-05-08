@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.2.0'
+__version__=  '1.2.1'
 
 
 # The MIT License (MIT)
@@ -1454,11 +1454,9 @@ def formattext(tag, head1, text1, head2, text2, width,
         
         try: ptext1 = text1_array[i]
         except(IndexError):
-            head1  = ''
             ptext1 = ''
         try: ptext2 = text2_array[i]
         except(IndexError):
-            head2  = ''
             ptext2 = ''
         
         line += head1
