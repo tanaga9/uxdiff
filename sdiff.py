@@ -14,12 +14,12 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.2.1'
+__version__=  '1.3.0'
 
 
 # The MIT License (MIT)
 # --------------------------------------------
-# Copyright (c) 2011,2013 Tanaga
+# Copyright (c) 2011,2016 Tanaga
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"),
@@ -39,7 +39,7 @@ __version__=  '1.2.1'
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
-import sys, difflib, optparse, unicodedata, re, codecs
+import sys, difflib, argparse, unicodedata, re, codecs
 # import pprint, pdb, profile
 
 import filecmp
@@ -63,6 +63,29 @@ BUFSIZE = 8*1024
 # ライセンス
 # ==========
 # The MIT License (MIT)
+
+def getcolor(withcolor, tag, side, openclose, isdircmp=False):
+    if not withcolor: return ''
+    bg1 = '' # ';47'
+    bg2 = '' # ';47'
+    bold = ';1'
+    colors = {
+        '<': (('\033[31' + bg2 + bold + 'm', '\033[0m'),
+              ('', '')),
+        '>': (('', ''),
+              ('\033[32' + bg2 + bold + 'm', '\033[0m')),
+        '|': ((('\033[34' + bg2 + bold + 'm', '\033[0m'),
+               ('\033[34' + bg2 + bold + 'm', '\033[0m'))
+               if isdircmp else (('', ''), ('', ''))),
+        '-': (('\033[31' + bg1 + bold + 'm', '\033[0m'),
+              ('', '')),
+        '+': (('', ''),
+              ('\033[32' + bg1 + bold + 'm', '\033[0m')),
+        '!': (('\033[31' + bg1 + bold + 'm', '\033[0m'),
+              ('\033[32' + bg1 + bold + 'm', '\033[0m')),
+        ' ': (('', ''), ('', '')),
+        }
+    return colors[tag][side][openclose]
 
 def is_text(filepath):
     bufsize = BUFSIZE
@@ -1037,7 +1060,7 @@ class Differ:
     # 差分についてプレーンテキストでフォーマッティングを行う関数
     # （行内差分についてはサポートしていない）
     @staticmethod
-    def formattext(tag, num1, text1, num2, text2, width):
+    def formattext(tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
         """
         
         Example:
@@ -1059,11 +1082,11 @@ class Differ:
         
         >>> import pprint
         >>> pprint.pprint(Differ.formattext('>',
-        ...                                 1, 'a' * 80,
-        ...                                 2, 'b' * 30, 80))
-        ['     2|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >      3|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-         '     ^|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ^       |',
-         '     ^|aaaaaaaaaaaaaaaaaa              ^       |']
+        ...                                 1, 'a' * 60,
+        ...                                 2, 'b' * 20, 60))
+        ['     2|aaaaaaaaaaaaaaaaaaaaa >      3|bbbbbbbbbbbbbbbbbbbb',
+         '     ^|aaaaaaaaaaaaaaaaaaaaa ^       |',
+         '     ^|aaaaaaaaaaaaaaaaaa    ^       |']
         """
         
         assert width >= (6 + 1 + 2) + (1 + 1 + 1) + (6 + 1 + 2)
@@ -1085,7 +1108,40 @@ class Differ:
         
         text1_array = strwidthdiv(text1, textwidth)
         text2_array = strwidthdiv(text2, textwidth)
-        
+
+        if tag == '|' and withcolor and linediff is not None:
+            def colordiff(text_array, side): # side is 0(left) or 1(right)
+                colortext_array = []
+                index = 0
+                index_linediff = 0
+                for text in text_array:
+                    colortext = ''
+                    while len(text) > 0:
+                        if linediff[index][side + 1] is None:
+                            index += 1
+                            index_linediff = 0
+                            continue
+                        chartag = linediff[index][0]
+                        linediff_delta = linediff[index][side + 1][index_linediff:]
+                        minlen = min((len(text), len(linediff_delta)))
+                        colortext += getcolor(withcolor, chartag, side, 0)
+                        colortext += linediff_delta[:minlen]
+                        colortext += getcolor(withcolor, chartag, side, 1)
+                        if len(linediff_delta) == minlen:
+                            index += 1
+                            index_linediff = 0
+                        else:
+                            index_linediff += minlen
+                        text = text[minlen:]
+                    colortext_array.append(colortext)
+                return colortext_array
+
+            colortext1_array = colordiff(text1_array, 0)
+            colortext2_array = colordiff(text2_array, 1)
+        else:
+            colortext1_array = text1_array
+            colortext2_array = text2_array
+
         for i in range(max(len(text1_array), len(text2_array))):
             if isinstance(num1, int):
                 if i == 0: pnum1 = str(num1 + 1)
@@ -1104,25 +1160,35 @@ class Differ:
             except(IndexError):
                 pnum2  = ''
                 ptext2 = ''
-            
+            try: ctext1 = colortext1_array[i]
+            except(IndexError):
+                ctext1 = ''
+            try: ctext2 = colortext2_array[i]
+            except(IndexError):
+                ctext2 = ''
+
             # (6 + 1 + x) + (1 + 1 + 1) + (6 + 1 + y)
             line += (pnum1.rjust(6))
             line += ('|')
-            line += (ptext1)
+            line += getcolor(withcolor, tag, 0, 0)
+            line += (ctext1)
+            line += getcolor(withcolor, tag, 0, 1)
             line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
             if   i == 0:     line += (' ' + tag + ' ')
             elif tag == ' ': line += (' ' + ' ' + ' ')
             else:            line += (' ' + '^' + ' ')
             line += (pnum2.rjust(6))
             line += ('|')
-            line += (ptext2)
+            line += getcolor(withcolor, tag, 1, 0)
+            line += (ctext2)
+            line += getcolor(withcolor, tag, 1, 1)
             lines.append(line)
             line = ''
         return lines
     
     # 行内差分についてプレーンテキストでフォーマッティングを行う関数
     @staticmethod
-    def formatlinetext(num1, num2, linediff, width):
+    def formatlinetext(num1, num2, linediff, width, withcolor=False):
         """
         
         Example:
@@ -1137,12 +1203,14 @@ class Differ:
          '[ <-  ]     2|bbb  cc  ee',
          '[  -> ]     3|aaaaaccdd  ']
         """
-        
+
+        if withcolor: return None
+
         assert width >= (7 + 6 + 1) + 2
         textwidth = width - (7 + 6 + 1)
         
         lines = []
-        
+
         buffertag = ''
         buffertext1 = ''
         buffertext2 = ''
@@ -1172,19 +1240,26 @@ class Differ:
             elif tag == '!':
                 maxwidth = max(strwidth(text1), strwidth(text2))
                 minwidth = min(strwidth(text1), strwidth(text2))
+                subtag = '!'
                 if strwidth(text1) < strwidth(text2):
-                    buffertag += tag * minwidth + '+' * (strwidth(text2) - strwidth(text1))
+                    subtag = '+'
+                    buffertag += tag * minwidth + subtag * (strwidth(text2) - strwidth(text1))
                 else:
-                    buffertag += tag * minwidth + '-' * (strwidth(text1) - strwidth(text2))
-                buffertext1 += text1 + ' ' * (maxwidth - strwidth(text1))
-                buffertext2 += text2 + ' ' * (maxwidth - strwidth(text2))
+                    subtag = '-'
+                    buffertag += tag * minwidth + subtag * (strwidth(text1) - strwidth(text2))
+                buffertext1 += text1[:minwidth]
+                buffertext1 += text1[minwidth:]
+                buffertext1 += ' ' * (maxwidth - strwidth(text1))
+                buffertext2 += text2[:minwidth]
+                buffertext2 += text2[minwidth:]
+                buffertext2 += ' ' * (maxwidth - strwidth(text2))
         
         (taglines,
          text1lines,
          text2lines) = strwidthdivsync((buffertag,
                                         buffertext1,
                                         buffertext2),
-                                       textwidth)
+                                        textwidth)
         
         for i in range(max(len(taglines), len(text1lines), len(text2lines))):
             line  = '[     ]'
@@ -1435,8 +1510,9 @@ class ext_dircmp(filecmp.dircmp):
         return
 
 
-def formattext(tag, head1, text1, head2, text2, width,
-               cont_mark1='^', cont_mark2='^', sep_mark='|'):
+def formatdircmp(tag, head1, text1, head2, text2, width,
+                 cont_mark1='^', cont_mark2='^', sep_mark='|',
+                 withcolor=False):
     pwidth = ((strwidth(head1) + strwidth(sep_mark)) +
               (1 + strwidth(tag) + 1) +
               (strwidth(head2) + strwidth(sep_mark)))
@@ -1446,7 +1522,7 @@ def formattext(tag, head1, text1, head2, text2, width,
     
     text1_array = strwidthdiv(text1, textwidth)
     text2_array = strwidthdiv(text2, textwidth)
-    
+
     for i in range(max(len(text1_array), len(text2_array))):
         line = ''
         if i != 0: head1 = cont_mark1
@@ -1461,20 +1537,24 @@ def formattext(tag, head1, text1, head2, text2, width,
         
         line += head1
         line += sep_mark
+        line += getcolor(withcolor, tag, 0, 0, isdircmp=True)
         line += ptext1
+        line += getcolor(withcolor, tag, 0, 1, isdircmp=True)
         line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
         if   i == 0:     line += (' ' + tag + ' ')
         elif tag == ' ': line += (' ' + ' ' + ' ')
         else:            line += (' ' + '^' + ' ')
         line += head2
         line += sep_mark
+        line += getcolor(withcolor, tag, 1, 0, isdircmp=True)
         line += ptext2
+        line += getcolor(withcolor, tag, 1, 1, isdircmp=True)
         yield line
     return
 
 # 独自の形式で等幅フォントのターミナルで表示するための文字列の差分を返す。
 def original_diff(lines1, lines2, linejunk, charjunk,
-                  cutoff, fuzzy, cutoffchar, context, width):
+                  cutoff, fuzzy, cutoffchar, context, width, withcolor=False):
     r"""
     
     Example:
@@ -1535,12 +1615,14 @@ def original_diff(lines1, lines2, linejunk, charjunk,
             continue
         
         ((tag, num1, text1, num2, text2), linediff) = diff
-        
-        for line in differ.formattext(tag, num1, text1, num2, text2, width):
+
+        for line in differ.formattext(tag, num1, text1, num2, text2, width,
+                                      withcolor=withcolor, linediff=linediff):
             yield line
         if tag == '|':
-            textlinediffs.append(differ.formatlinetext(num1, num2,
-                                                       linediff, width))
+            linetext = differ.formatlinetext(num1, num2, linediff, width,
+                                             withcolor=withcolor)
+            if linetext is not None: textlinediffs.append(linetext)
 
 def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
     r"""Compare directories."""
@@ -1713,7 +1795,8 @@ def parse_unidiff(diff):
     return
 
 def parse_unidiff_and_original_diff(
-        udiffs, linejunk, charjunk, cutoff, fuzzy, cutoffchar, context, width):
+        udiffs, linejunk, charjunk, cutoff, fuzzy, cutoffchar, context, width,
+        withcolor=False):
     r"""
 
     Example:
@@ -1842,214 +1925,277 @@ def parse_unidiff_and_original_diff(
                             text1,
                             hunk.target_start - 1 + num2 if num2 is not None else None,
                             text2,
-                            width):
+                            width,
+                            withcolor=withcolor,
+                            linediff=linediff):
                         yield line
                     if tag == '|':
-                        textlinediffs.append(differ.formatlinetext(
+                        linetext = differ.formatlinetext(
                             hunk.source_start - 1 + num1,
                             hunk.target_start - 1 + num2,
-                            linediff, width))
+                            linediff, width,
+                            withcolor=withcolor)
+                        if linetext is not None: textlinediffs.append(linetext)
     return
+
+def getTerminalSize():
+    env = os.environ
+    def ioctl_GWINSZ(fd):
+        try:
+            import fcntl, termios, struct
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
+        except:
+            return None
+        return cr
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+    if not cr:
+        cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
+    return int(cr[1]), int(cr[0])
+
+def getdefaultencoding():
+    defaultencoding = sys.getdefaultencoding()
+    if defaultencoding == 'ascii': return 'utf8'
+    return defaultencoding
 
 def main():
     """main function"""
-    
+
     # オプション解析
-    parser = optparse.OptionParser('usage: %prog'
-                                   ' [ -f | -c ]'
-                                   ' [ -w WIDTH ]'
-                                   ' [ other options ]'
-                                   ' [file_or_dir_1 file_or_dir_2]',
-                                   version='%prog ' + __version__)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('file_or_dir_1', nargs='?', help='file or dir 1')
+    parser.add_argument('file_or_dir_2', nargs='?', help='file or dir 2')
+    
     # -fオプション: 差分を抽出した箇所以外のテキスト全体を表示する
-    parser.add_option('-f', '--full', action='store_true', default=False,
-                      help='Fulltext diff (default False) (disable context option)')
+    parser.add_argument('-f', '--full', action='store_true', default=False,
+                        help='Fulltext diff (default False) (disable context option)')
     # -cオプション: 差分を抽出した箇所の前後の行数を指定する（デフォルトは前後5行）
-    parser.add_option('-c', '--context', metavar='NUM', type='int', default=5,
-                      help='Set number of context lines (default 5)')
+    parser.add_argument('-c', '--context', metavar='NUM', type=int, default=5,
+                        help='Set number of context lines (default 5)')
     
     # -wオプション: 差分表示時の最大の横幅を指定する（制限する）
-    def check_width(option, opt_str, value, parser):
-        if value <= 0:
-            raise optparse.OptionValueError(\
-                '%s option invalid. set a larger number.' % opt_str)
-        setattr(parser.values, option.dest, value)
-    parser.add_option('-w', '--width', type='int', default=130,
-                      action='callback', callback=check_width,
-                      help='Set number of width  (default 130)')
+    class CheckWidth(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if values <= 0:
+                raise argparse.ArgumentError(self, 'set a larger number.')
+            setattr(namespace, self.dest, values)
+    parser.add_argument('-w', '--width', type=int, default=None, action=CheckWidth,
+                        help='Set number of width  (default auto(or 130))')
     # -rオプション: ディレクトリ比較時にサブディレクトリが見つかった場合、再帰的に比較する
-    parser.add_option('-r', '--recursive', action='store_true', default=False,
-                      help='Recursively compare any subdirectories found. (default False)'
-                           ' (enable only compare directories)')
-    def check_ratio(option, opt_str, value, parser):
-        if not 0.0 <= value <= 1.0:
-            raise optparse.OptionValueError(opt_str + ' option invalid.'
-                                            ' set number in range'
-                                            '(0.0 <= number <= 1.0 ).')
-        setattr(parser.values, option.dest, value)
+    parser.add_argument('-r', '--recursive', action='store_true', default=False,
+                        help='Recursively compare any subdirectories found. (default False)'
+                        ' (enable only compare directories)')
+    class CheckRatio(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if not 0.0 <= values <= 1.0:
+                raise argparse.ArgumentError(
+                    self, 'set number in range (0.0 <= number <= 1.0 ).')
+            setattr(namespace, self.dest, values)
     # 
-    def check_regexp(option, opt_str, value, parser):
-        try: re.compile(value)
-        except:
-            raise optparse.OptionValueError(opt_str + ' option invalid. wrong regexp')
-        setattr(parser.values, option.dest, value)
-    parser.add_option('', '--linejunk', type='string',
-                      action='callback', callback=check_regexp,
-                      help='linejunk')
+    class CheckRegexp(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            try: re.compile(values)
+            except:
+                raise argparse.ArgumentError(self, 'wrong regexp')
+            setattr(namespace, self.dest, values)
+    parser.add_argument('--linejunk', type=str, action=CheckRegexp,
+                        help='linejunk')
     # 
-    parser.add_option('', '--charjunk', type='string', action='store',
-                      help='charjunk')
+    parser.add_argument('--charjunk', type=str, action='store',
+                        help='charjunk')
     # --cutoffオプション: 差分抽出時の行マージ判定割合を指定する（デフォルトは75%）
-    parser.add_option('', '--cutoff', metavar='RATIO', type='float', default=0.75,
-                      action='callback', callback=check_ratio,
-                      help='Set number of cutoff ratio (default 0.75) (0.0<=ratio<=1.0)')
+    parser.add_argument('--cutoff', metavar='RATIO', type=float, default=0.75,
+                        action=CheckRatio,
+                        help='Set number of cutoff ratio (default 0.75) (0.0<=ratio<=1.0)')
     # --fuzzyオプション: 差分抽出時のマージ適用調節割合を指定する（デフォルトは0.0%）
-    parser.add_option('', '--fuzzy', type='float', metavar='RATIO', default=0.0,
-                      action='callback', callback=check_ratio,
-                      help='Set number of fuzzy matching ratio (default 0.0) (0.0<=ratio<=1.0)')
+    parser.add_argument('--fuzzy', type=float, metavar='RATIO', default=0.0,
+                        action=CheckRatio,
+                        help='Set number of fuzzy matching ratio (default 0.0) (0.0<=ratio<=1.0)')
     # --cutoffcharオプション: 差分抽出時に文字の変更を分けて表示するかどうかを指定する
     # （デフォルトはFlase(分けない)）
-    parser.add_option('', '--cutoffchar', action='store_true', default=False,
-                      help='Cutoff character in line diffs (default False)')
+    parser.add_argument('--cutoffchar', action='store_true', default=False,
+                        help='Cutoff character in line diffs (default False)')
     
-    def check_codec(option, opt_str, value, parser):
-        try: value = codecs.lookup(value).name
-        except(LookupError):
-            raise optparse.OptionValueError(
-                'LookupError: unknown encoding \'' + value + '\'')
-        setattr(parser.values, option.dest, value)
+    class CheckCodec(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            try: values = codecs.lookup(values).name
+            except(LookupError):
+                raise argparse.ArgumentError(
+                    self, 'LookupError: unknown encoding \'' + values + '\'')
+            setattr(namespace, self.dest, values)
     # --enc-file1オプション: 左側のファイルを開く際のコーデックを指定する（デフォルトはutf-8）
-    parser.add_option('', '--enc-file1', metavar='ENCODING', type='string', default='utf-8',
-                      action='callback', callback=check_codec,
-                      help='Set encoding of leftside inputfile1 (default utf-8)')
+    parser.add_argument('--enc-file1', metavar='ENCODING', type=str, default='utf-8',
+                        action=CheckCodec,
+                        help='Set encoding of leftside inputfile1 (default utf-8)')
     # --enc-file2オプション: 右側のファイルを開く際のコーデックを指定する（デフォルトはutf-8）
-    parser.add_option('', '--enc-file2', metavar='ENCODING', type='string', default='utf-8',
-                      action='callback', callback=check_codec,
-                      help='Set encoding of rightside inputfile2 (default utf-8)')
-    # --enc-stdinオプション: Unified形式の差分を標準入力する際のコーデックを指定する（デフォルトはsys.getdefaultencoding）
-    parser.add_option('', '--enc-stdin', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
-                      action='callback', callback=check_codec,
-                      help='Set encoding of standard input (default `sys.getdefaultencoding()`)')
-    # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはsys.getdefaultencoding）
-    parser.add_option('', '--enc-stdout', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
-                      action='callback', callback=check_codec,
-                      help='Set encoding of standard output (default `sys.getdefaultencoding()`)')
-    # --enc-filepathオプション: ファイル名に使用されるコーデックを指定する（デフォルトはsys.getdefaultencoding()）
-    parser.add_option('', '--enc-filepath', metavar='ENCODING', type='string', default=sys.getdefaultencoding(),
-                      action='callback', callback=check_codec,
-                      help='Set encoding of filepath (default `sys.getdefaultencoding()`)')
+    parser.add_argument('--enc-file2', metavar='ENCODING', type=str, default='utf-8',
+                        action=CheckCodec,
+                        help='Set encoding of rightside inputfile2 (default utf-8)')
+    # --enc-stdinオプション: Unified形式の差分を標準入力する際のコーデックを指定する（デフォルトはdefaultencoding）
+    parser.add_argument('--enc-stdin', metavar='ENCODING', type=str, default=getdefaultencoding(),
+                        action=CheckCodec,
+                        help='Set encoding of standard input (default `defaultencoding`)')
+    # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはdefaultencoding）
+    parser.add_argument('--enc-stdout', metavar='ENCODING', type=str, default=getdefaultencoding(),
+                        action=CheckCodec,
+                        help='Set encoding of standard output (default `defaultencoding`)')
+    # --enc-filepathオプション: ファイル名に使用されるコーデックを指定する（デフォルトはdefaultencoding）
+    parser.add_argument('--enc-filepath', metavar='ENCODING', type=str, default=getdefaultencoding(),
+                        action=CheckCodec,
+                        help='Set encoding of filepath (default `defaultencoding`)')
     # --ignore-crlfオプション: 改行コードの違い（crとlf）を無視する
-    parser.add_option('', '--ignore-crlf', action='store_true', default=False,
-                      help='Ignore carriage return (\'\\r\') and line feed (\'\\n\') (default False)')
+    parser.add_argument('--ignore-crlf', action='store_true', default=False,
+                        help='Ignore carriage return (\'\\r\') and line feed (\'\\n\') (default False)')
+
+    colormodes = {'always': True, 'never': False, 'auto': None}
+    # --colorオプション: 色付き表示の指定（デフォルトはauto）
+    parser.add_argument('--color', nargs='?', choices=colormodes.keys(),
+                        metavar='WHEN', type=str, default='auto',
+                        help='Show colored diff. --color is the same as --color=always.'
+                        ' WHEN can be one of always, never, or auto. (default auto)')
+    # --no-colorオプション: 色付き表示無効の指定
+    parser.add_argument('--no-color', action='store_true', default=False,
+                        help='Turn off colored diff. override color option if both. (default False)')
     # -uオプション: 何もしない。
     # Subversionから呼び出されてときにエラーとならないための互換性のためにある。
-    parser.add_option('-u', action='store_true', help='Do nothing'
-    ' (It is accepted only for compatibility with "svn diff --diff-cmd" interface)')
+    parser.add_argument('-u', action='store_true', help='Do nothing'
+                        ' (It is accepted only for compatibility with "svn diff --diff-cmd" interface)')
     
     # -Lオプション: 差分表示前にラベルを表示する（最大2回指定可能）
     # Subversionから呼び出された場合を想定したオプション。
     label = []
-    def set_label(option, opt_str, value, parser):
-        if len(label) >= 2:
-            # -Lオプションは3回以上指定してはいけない
-            raise optparse.OptionValueError(\
-                "%s option invalid. set less than 3 times." % opt_str)
-        label.append(value)
-    parser.add_option("-L", type="string",
-                      action="callback", callback=set_label,
-                      help='label of file1 and file2(can set 2 times)')
+    class SetLabel(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if len(label) >= 2:
+                # -Lオプションは3回以上指定してはいけない
+                raise argparse.ArgumentError(
+                    self, 'set less than 3 times.')
+            label.append(values)
+    parser.add_argument("-L", type=str,
+                        action=SetLabel,
+                        help='label of file1 and file2(can set 2 times)')
     
-    def _test(option, opt_str, value, parser):
+    # --testオプション: テストコードを実行
+    parser.add_argument('--test', action='store_true', help='Test self')
+    
+    # オプション解析を実行
+    args = parser.parse_args()
+    if args.test:
         import doctest
         doctest.testmod(verbose=True)
         parser.exit()
-    # --testオプション: テストコードを実行
-    parser.add_option('', '--test', action='callback', callback=_test, help='Test self')
-    
-    # オプション解析を実行
-    (options, args) = parser.parse_args()
+
+    file_or_dir1, file_or_dir2 = args.file_or_dir_1, args.file_or_dir_2
     # 必須引数の個数が所定と異なる場合は
-    if   len(args) == 0:
+    if file_or_dir1 is None and file_or_dir2 is None:
         pass
-    elif len(args) == 2:
-        # 引数を変数に設定
-        file_or_dir1, file_or_dir2 = args
+    elif file_or_dir1 is not None and file_or_dir2 is not None:
+        pass
     else:
         # メッセージを表示して終了
         parser.error('Need to specify both a file1 and file2')
         
-    context = options.context
-    full = not options.full
+    context = args.context
+    full = not args.full
 
     try: stdin_buffer = sys.stdin.buffer
     except(AttributeError):
-        sys.stdin = codecs.getreader(options.enc_stdin)(sys.stdin) # python2.x
+        sys.stdin = codecs.getreader(args.enc_stdin)(sys.stdin) # python2.x
     else:
-        sys.stdin = io.TextIOWrapper(stdin_buffer, encoding=options.enc_stdin) # python3.x
+        sys.stdin = io.TextIOWrapper(stdin_buffer, encoding=args.enc_stdin) # python3.x
     
     try: stdout_buffer = sys.stdout.buffer
     except(AttributeError):
-        sys.stdout = codecs.getwriter(options.enc_stdout)(sys.stdout) # python2.x
+        sys.stdout = codecs.getwriter(args.enc_stdout)(sys.stdout) # python2.x
     else:
-        sys.stdout = io.TextIOWrapper(stdout_buffer, encoding=options.enc_stdout) # python3.x
+        sys.stdout = io.TextIOWrapper(stdout_buffer, encoding=args.enc_stdout) # python3.x
     
-    if options.full:
+    if args.full:
         context = None
     else:
-        context = options.context
+        context = args.context
     
-    if options.linejunk != None:
-        linejunk = lambda line: re.compile(options.linejunk).match(line) is not None
+    if args.linejunk != None:
+        linejunk = lambda line: re.compile(args.linejunk).match(line) is not None
     else:
         linejunk = None
     
-    if options.charjunk != None:
-        charjunk = lambda char: char in options.charjunk
+    if args.charjunk != None:
+        charjunk = lambda char: char in args.charjunk
     else:
         charjunk = None
-    
+
+    if args.width is None:
+        size = getTerminalSize()
+        if size is not None:
+            args.width = size[0]
+        else:
+            args.width = 130
+
+    withcolor = True
+    if args.no_color is True:
+        withcolor = False
+    else:
+        if args.color is None or colormodes[args.color] is True:
+            withcolor = True
+        elif colormodes[args.color] is False:
+            withcolor = False
+        else:
+            if not sys.stdout.isatty():
+                withcolor = False
+
     cmpdir = False
     cmplist = []
-    if len(args) == 0:
+    if file_or_dir1 is None:
         for line in parse_unidiff_and_original_diff(
                 sys.stdin,
                 linejunk=linejunk, charjunk=charjunk,
-                cutoff=options.cutoff, fuzzy=options.fuzzy,
-                cutoffchar=options.cutoffchar,
-                context=context, width=options.width):
+                cutoff=args.cutoff, fuzzy=args.fuzzy,
+                cutoffchar=args.cutoffchar,
+                context=context, width=args.width,
+                withcolor=withcolor):
             print(line)
     elif os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
         # diff [DIR] and [DIR]
         cmpdir = True
         
-        for line in formattext(' ',
-                               '', file_or_dir1 + '/', '', file_or_dir2 + '/',
-                               options.width,
-                               cont_mark1='', cont_mark2='', sep_mark=''):
+        for line in formatdircmp(' ',
+                                 '', file_or_dir1 + '/', '', file_or_dir2 + '/',
+                                 args.width,
+                                 cont_mark1='', cont_mark2='', sep_mark='',
+                                 withcolor=withcolor):
             print(line)
         
         for result in dircmp(file_or_dir1, file_or_dir2,
-                             options.enc_filepath, options.recursive):
+                             args.enc_filepath, args.recursive):
             (tag,
             head1, text1,
             head2, text2,
             cont_mark1, cont_mark2,
             filepair) = result
             
-            for line in formattext(tag,
-                                   head1, text1, head2, text2,
-                                   options.width,
-                                   cont_mark1=cont_mark1,
-                                   cont_mark2=cont_mark2,
-                                   sep_mark=''):
+            for line in formatdircmp(tag,
+                                     head1, text1, head2, text2,
+                                     args.width,
+                                     cont_mark1=cont_mark1,
+                                     cont_mark2=cont_mark2,
+                                     sep_mark='',
+                                     withcolor=withcolor):
                 print(line)
             if filepair is not None:
                 cmplist.append(filepair)
         print('')
     else:
-        try: file_or_dir1 = file_or_dir1.decode(options.enc_filepath) # python2.x
+        try: file_or_dir1 = file_or_dir1.decode(args.enc_filepath) # python2.x
         except(AttributeError): pass # python3.x
-        try: file_or_dir2 = file_or_dir2.decode(options.enc_filepath) # python2.x
+        try: file_or_dir2 = file_or_dir2.decode(args.enc_filepath) # python2.x
         except(AttributeError): pass # python3.x
         
         if   os.path.isdir(file_or_dir1):
@@ -2085,19 +2231,19 @@ def main():
                 if is_text_file2: filetype2 = 'Text'
                 else:             filetype2 = 'Binary'
             else:
-                filetype1 = options.enc_file1
-                filetype2 = options.enc_file2
+                filetype1 = args.enc_file1
+                filetype2 = args.enc_file2
         else:
-            try: label[0] = label[0].decode(options.enc_filepath) # python2.x
+            try: label[0] = label[0].decode(args.enc_filepath) # python2.x
             except(AttributeError): pass # python3.x
-            try: label[1] = label[1].decode(options.enc_filepath) # python2.x
+            try: label[1] = label[1].decode(args.enc_filepath) # python2.x
             except(AttributeError): pass # python3.x
             
             is_text_file1 = True
             is_text_file2 = True
             
-            filetype1 = options.enc_file1
-            filetype2 = options.enc_file2
+            filetype1 = args.enc_file1
+            filetype2 = args.enc_file2
         
         print('--- ' + label[0] + ' (' + filetype1 + ')')
         print('+++ ' + label[1] + ' (' + filetype2 + ')')
@@ -2112,11 +2258,11 @@ def main():
         lines2 = None
         try:
             # for Python3.x
-            # lines1 = open(file1, 'r', encoding=options.enc_file1)
-            # lines2 = open(file2, 'r', encoding=options.enc_file2)
+            # lines1 = open(file1, 'r', encoding=args.enc_file1)
+            # lines2 = open(file2, 'r', encoding=args.enc_file2)
             # for Python2.x
-            lines1 = codecs.open(file1, 'r', encoding=options.enc_file1).readlines()
-            lines2 = codecs.open(file2, 'r', encoding=options.enc_file2).readlines()
+            lines1 = codecs.open(file1, 'r', encoding=args.enc_file1).readlines()
+            lines2 = codecs.open(file2, 'r', encoding=args.enc_file2).readlines()
         # for Python2.x
         except IOError:
             if lines1 == None:
@@ -2128,11 +2274,11 @@ def main():
         except UnicodeDecodeError:
             if lines1 == None:
                 filename = file1
-                encoding_text = options.enc_file1
+                encoding_text = args.enc_file1
                 optionname = '--enc-file1'
             else:
                 filename = file2
-                encoding_text = options.enc_file2
+                encoding_text = args.enc_file2
                 optionname = '--enc-file2'
             print('\'' + filename  + '\' is not encoding by \'' + encoding_text + '\'')
             print('Set correct encoding of \'' + filename + '\' by ' + optionname + ' option')
@@ -2147,7 +2293,7 @@ def main():
         # except UnicodeDecodeError as error:
         #     print(str(error))
         
-        if options.ignore_crlf:
+        if args.ignore_crlf:
             lines1 = [line.rstrip('\r\n') for line in lines1]
             lines2 = [line.rstrip('\r\n') for line in lines2]
         
@@ -2159,11 +2305,12 @@ def main():
         
         diff = original_diff(lines1, lines2, linejunk=linejunk,
                              charjunk=charjunk,
-                             cutoff=options.cutoff,
-                             fuzzy=options.fuzzy,
-                             cutoffchar=options.cutoffchar,
+                             cutoff=args.cutoff,
+                             fuzzy=args.fuzzy,
+                             cutoffchar=args.cutoffchar,
                              context=context,
-                             width=options.width)
+                             width=args.width,
+                             withcolor=withcolor)
         
         for line in diff: print(line)
     return 0
