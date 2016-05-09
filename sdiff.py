@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.3.0'
+__version__=  '1.3.1'
 
 
 # The MIT License (MIT)
@@ -64,10 +64,12 @@ BUFSIZE = 8*1024
 # ==========
 # The MIT License (MIT)
 
-def getcolor(withcolor, tag, side, openclose, isdircmp=False):
+global_withbg = False
+def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=None):
     if not withcolor: return ''
-    bg1 = '' # ';47'
-    bg2 = '' # ';47'
+    if withbg is None: withbg = global_withbg
+    bg1 = '' if not withbg else ';47'
+    bg2 = '' if not withbg else ';47'
     bold = ';1'
     colors = {
         '<': (('\033[31' + bg2 + bold + 'm', '\033[0m'),
@@ -1056,6 +1058,49 @@ class Differ:
             for num2 in range(text2_low, text2_high):
                 yield (('>', None, None, num2, text2[num2]), None)
         return
+
+    @staticmethod
+    def _colordiff(text_array, linediff, side): # side is 0(left) or 1(right)
+        colortext_array = []
+        index = 0
+        index_linediff = 0
+        for text in text_array:
+            colortext = ''
+            while len(text) > 0:
+                if linediff[index][side + 1] is None:
+                    index += 1
+                    index_linediff = 0
+                    continue
+                chartag = linediff[index][0]
+                linediff_delta = linediff[index][side + 1][index_linediff:]
+                minlen = min((len(text), len(linediff_delta)))
+                text = text[minlen:]
+                deltatext = linediff_delta[:minlen].replace('\t', ' ')
+
+                scolor  = getcolor(True, chartag, side, 0)
+                ecolor  = getcolor(True, chartag, side, 1)
+                scolor_ = getcolor(True, chartag, side, 0, withbg=True)
+                ecolor_ = getcolor(True, chartag, side, 1, withbg=True)
+
+                if chartag != ' ':
+                    if colortext == '':
+                        deltatext = re.sub(
+                            r'^( +)', scolor_ + r'\1' + ecolor_ + scolor, deltatext)
+                    if text == '':
+                        deltatext = re.sub(
+                            r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, deltatext)
+
+                colortext += scolor
+                colortext += deltatext
+                colortext += ecolor
+
+                if len(linediff_delta) == minlen:
+                    index += 1
+                    index_linediff = 0
+                else:
+                    index_linediff += minlen
+            colortext_array.append(colortext)
+        return colortext_array
     
     # 差分についてプレーンテキストでフォーマッティングを行う関数
     # （行内差分についてはサポートしていない）
@@ -1110,34 +1155,32 @@ class Differ:
         text2_array = strwidthdiv(text2, textwidth)
 
         if tag == '|' and withcolor and linediff is not None:
-            def colordiff(text_array, side): # side is 0(left) or 1(right)
-                colortext_array = []
-                index = 0
-                index_linediff = 0
-                for text in text_array:
-                    colortext = ''
-                    while len(text) > 0:
-                        if linediff[index][side + 1] is None:
-                            index += 1
-                            index_linediff = 0
-                            continue
-                        chartag = linediff[index][0]
-                        linediff_delta = linediff[index][side + 1][index_linediff:]
-                        minlen = min((len(text), len(linediff_delta)))
-                        colortext += getcolor(withcolor, chartag, side, 0)
-                        colortext += linediff_delta[:minlen]
-                        colortext += getcolor(withcolor, chartag, side, 1)
-                        if len(linediff_delta) == minlen:
-                            index += 1
-                            index_linediff = 0
-                        else:
-                            index_linediff += minlen
-                        text = text[minlen:]
-                    colortext_array.append(colortext)
-                return colortext_array
+            colortext1_array = Differ._colordiff(text1_array, linediff, 0)
+            colortext2_array = Differ._colordiff(text2_array, linediff, 1)
 
-            colortext1_array = colordiff(text1_array, 0)
-            colortext2_array = colordiff(text2_array, 1)
+        elif (tag == '<' or tag == '>') and withcolor:
+            scolor  = getcolor(True, tag, 0, 0)
+            ecolor  = getcolor(True, tag, 0, 1)
+            scolor_ = getcolor(True, tag, 0, 0, withbg=True)
+            ecolor_ = getcolor(True, tag, 0, 1, withbg=True)
+            colortext1_array = []
+            for i, text1 in enumerate(text1_array):
+                if i == len(text1_array) - 1:
+                    text1 = re.sub(
+                        r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, text1)
+                colortext1_array.append(scolor + text1 + ecolor)
+
+            scolor  = getcolor(True, tag, 1, 0)
+            ecolor  = getcolor(True, tag, 1, 1)
+            scolor_ = getcolor(True, tag, 1, 0, withbg=True)
+            ecolor_ = getcolor(True, tag, 1, 1, withbg=True)
+            colortext2_array = []
+            for i, text2 in enumerate(text2_array):
+                if i == len(text2_array) - 1:
+                    text2 = re.sub(
+                        r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, text2)
+                colortext2_array.append(scolor + text2 + ecolor)
+
         else:
             colortext1_array = text1_array
             colortext2_array = text2_array
@@ -1170,18 +1213,14 @@ class Differ:
             # (6 + 1 + x) + (1 + 1 + 1) + (6 + 1 + y)
             line += (pnum1.rjust(6))
             line += ('|')
-            line += getcolor(withcolor, tag, 0, 0)
             line += (ctext1)
-            line += getcolor(withcolor, tag, 0, 1)
             line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
             if   i == 0:     line += (' ' + tag + ' ')
             elif tag == ' ': line += (' ' + ' ' + ' ')
             else:            line += (' ' + '^' + ' ')
             line += (pnum2.rjust(6))
             line += ('|')
-            line += getcolor(withcolor, tag, 1, 0)
             line += (ctext2)
-            line += getcolor(withcolor, tag, 1, 1)
             lines.append(line)
             line = ''
         return lines
@@ -2063,6 +2102,10 @@ def main():
     # --no-colorオプション: 色付き表示無効の指定
     parser.add_argument('--no-color', action='store_true', default=False,
                         help='Turn off colored diff. override color option if both. (default False)')
+    # --withbgオプション: 色付き表示での背景色有りの指定
+    parser.add_argument('--withbg', action='store_true', default=False,
+                        help='Colored diff with background color. '
+                        'It will be ignored if no-color option. (default False)')
     # -uオプション: 何もしない。
     # Subversionから呼び出されてときにエラーとならないための互換性のためにある。
     parser.add_argument('-u', action='store_true', help='Do nothing'
@@ -2150,6 +2193,10 @@ def main():
         else:
             if not sys.stdout.isatty():
                 withcolor = False
+
+    if withcolor and args.withbg:
+        global global_withbg
+        global_withbg = True
 
     cmpdir = False
     cmplist = []
