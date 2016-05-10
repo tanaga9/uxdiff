@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.3.1'
+__version__=  '1.3.2'
 
 
 # The MIT License (MIT)
@@ -1079,16 +1079,6 @@ class Differ:
 
                 scolor  = getcolor(True, chartag, side, 0)
                 ecolor  = getcolor(True, chartag, side, 1)
-                scolor_ = getcolor(True, chartag, side, 0, withbg=True)
-                ecolor_ = getcolor(True, chartag, side, 1, withbg=True)
-
-                if chartag != ' ':
-                    if colortext == '':
-                        deltatext = re.sub(
-                            r'^( +)', scolor_ + r'\1' + ecolor_ + scolor, deltatext)
-                    if text == '':
-                        deltatext = re.sub(
-                            r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, deltatext)
 
                 colortext += scolor
                 colortext += deltatext
@@ -1161,24 +1151,14 @@ class Differ:
         elif (tag == '<' or tag == '>') and withcolor:
             scolor  = getcolor(True, tag, 0, 0)
             ecolor  = getcolor(True, tag, 0, 1)
-            scolor_ = getcolor(True, tag, 0, 0, withbg=True)
-            ecolor_ = getcolor(True, tag, 0, 1, withbg=True)
             colortext1_array = []
             for i, text1 in enumerate(text1_array):
-                if i == len(text1_array) - 1:
-                    text1 = re.sub(
-                        r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, text1)
                 colortext1_array.append(scolor + text1 + ecolor)
 
             scolor  = getcolor(True, tag, 1, 0)
             ecolor  = getcolor(True, tag, 1, 1)
-            scolor_ = getcolor(True, tag, 1, 0, withbg=True)
-            ecolor_ = getcolor(True, tag, 1, 1, withbg=True)
             colortext2_array = []
             for i, text2 in enumerate(text2_array):
-                if i == len(text2_array) - 1:
-                    text2 = re.sub(
-                        r'( +)$', scolor_ + r'\1' + ecolor_ + scolor, text2)
                 colortext2_array.append(scolor + text2 + ecolor)
 
         else:
