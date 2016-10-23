@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.3.2'
+__version__=  '1.3.3'
 
 
 # The MIT License (MIT)
@@ -71,20 +71,29 @@ def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=None):
     bg1 = '' if not withbg else ';47'
     bg2 = '' if not withbg else ';47'
     bold = ';1'
+    
+    ansi_colors = {
+        'red': '31',
+        'grn': '32',
+        'ylw': '33',
+        'ble': '34',
+        }
     colors = {
-        '<': (('\033[31' + bg2 + bold + 'm', '\033[0m'),
+        '<': (('\033[' + ansi_colors['red'] + bg2 + bold + 'm', '\033[0m'),
               ('', '')),
         '>': (('', ''),
-              ('\033[32' + bg2 + bold + 'm', '\033[0m')),
-        '|': ((('\033[34' + bg2 + bold + 'm', '\033[0m'),
-               ('\033[34' + bg2 + bold + 'm', '\033[0m'))
+              ('\033[' + ansi_colors['grn'] + bg2 + bold + 'm', '\033[0m')),
+        '|': ((('\033[' + ansi_colors['ble'] + bg2 + bold + 'm', '\033[0m'),
+               ('\033[' + ansi_colors['ble']  + bg2 + bold + 'm', '\033[0m'))
                if isdircmp else (('', ''), ('', ''))),
-        '-': (('\033[31' + bg1 + bold + 'm', '\033[0m'),
+        '-': (('\033[' + ansi_colors['red'] + bg1 + bold + 'm', '\033[0m'),
               ('', '')),
         '+': (('', ''),
-              ('\033[32' + bg1 + bold + 'm', '\033[0m')),
-        '!': (('\033[31' + bg1 + bold + 'm', '\033[0m'),
-              ('\033[32' + bg1 + bold + 'm', '\033[0m')),
+              ('\033[' + ansi_colors['grn'] + bg1 + bold + 'm', '\033[0m')),
+        '!': (('\033[' + ansi_colors['red'] + bg1 + bold + 'm', '\033[0m'),
+              ('\033[' + ansi_colors['grn'] + bg1 + bold + 'm', '\033[0m')),
+        '?': (('\033[' + ansi_colors['ylw'] + bg1 + bold + 'm', '\033[0m'),
+              ('\033[' + ansi_colors['ylw'] + bg1 + bold + 'm', '\033[0m')),
         ' ': (('', ''), ('', '')),
         }
     return colors[tag][side][openclose]
