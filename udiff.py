@@ -2253,31 +2253,14 @@ def main():
     parser.add_argument('--withbg', action='store_true', default=False,
                         help='Colored diff with background color. '
                         'It will be ignored if no-color option. (default False)')
-    # -uオプション: 何もしない。
-    # Subversionから呼び出されてときにエラーとならないための互換性のためにある。
-    parser.add_argument('-u', action='store_true', help='Do nothing'
-                        ' (It is accepted only for compatibility with "svn diff --diff-cmd" interface)')
 
-    # -Lオプション: 差分表示前にラベルを表示する（最大2回指定可能）
-    # Subversionから呼び出された場合を想定したオプション。
-    label = []
-    class SetLabel(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            if len(label) >= 2:
-                # -Lオプションは3回以上指定してはいけない
-                raise argparse.ArgumentError(
-                    self, 'set less than 3 times.')
-            label.append(values)
-    parser.add_argument('-L', type=str,
-                        action=SetLabel,
-                        help='label of file1 and file2(can set 2 times)')
-
-    # --testオプション: テストコードを実行
-    parser.add_argument('--test', action='store_true', help='Test self')
+    if __name__ == "__main__":
+        # --testオプション: テストコードを実行
+        parser.add_argument('--test', action='store_true', help='Test self')
 
     # オプション解析を実行
     args = parser.parse_args()
-    if args.test:
+    if 'test' in dir(args) and args.test:
         import doctest
         doctest.testmod(verbose=True)
         parser.exit()
@@ -2412,6 +2395,8 @@ def main():
         else:
             # diff [FILE] and [FILE]
             cmplist = [(file_or_dir1, file_or_dir2)]
+
+    label = []
 
     for file1, file2 in cmplist:
 
