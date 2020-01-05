@@ -16,6 +16,15 @@ The MIT License (MIT)
 __author__ =  'Tanaga'
 __version__=  '1.4.0'
 
+META_INFO = {
+    'version'     : __version__,
+    'license'     : 'MIT',
+    'author'      : __author__,
+    'email'       : 'tanaga9(@)users(.)noreply(.)github(.)com',
+    'url'         : 'https://github.com/tanaga9/udiff',
+    'keywords'    : 'Compare two text files or directories',
+    'description' : ('Improves text comparison in GUI-less environments')
+}
 
 # The MIT License (MIT)
 # --------------------------------------------
@@ -41,6 +50,9 @@ __version__=  '1.4.0'
 
 import sys, difflib, argparse, unicodedata, re, codecs
 # import pprint, pdb, profile
+
+if sys.hexversion < 0x02050000:
+    raise SystemExit('*** Requires python >= 2.5.0')    # pragma: no cover
 
 import filecmp
 import os, stat
@@ -2142,6 +2154,10 @@ def main():
     parser.add_argument('file_or_dir_1', nargs='?', help='file or dir 1')
     parser.add_argument('file_or_dir_2', nargs='?', help='file or dir 2')
 
+    parser.add_argument(
+        '-y', '-s', '--side-by-side', action='store_true',
+        help='output in two columns')
+
     # -fオプション: 差分を抽出した箇所以外のテキスト全体を表示する
     parser.add_argument('-f', '--full', action='store_true', default=False,
                         help='Fulltext diff (default False) (disable context option)')
@@ -2251,7 +2267,7 @@ def main():
                 raise argparse.ArgumentError(
                     self, 'set less than 3 times.')
             label.append(values)
-    parser.add_argument("-L", type=str,
+    parser.add_argument('-L', type=str,
                         action=SetLabel,
                         help='label of file1 and file2(can set 2 times)')
 
@@ -2328,10 +2344,12 @@ def main():
         global global_withbg
         global_withbg = True
 
+    differ_class = UniLikeDiffer
+    if args.side_by_side:
+        differ_class = SidebysideDiffer
+
     # 差分を抽出
-    #differ = Differ(
-    #differ = SidebysideDiffer(
-    differ = UniLikeDiffer(
+    differ = differ_class(
         linejunk=linejunk,
         charjunk=charjunk,
         cutoff=args.cutoff,
