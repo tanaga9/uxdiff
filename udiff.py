@@ -22,8 +22,9 @@ META_INFO = {
     'author'      : __author__,
     'email'       : 'tanaga9(@)users(.)noreply(.)github(.)com',
     'url'         : 'https://github.com/tanaga9/udiff',
-    'keywords'    : 'Compare two text files or directories',
-    'description' : ('Improves text comparison in GUI-less environments')
+    'keywords'    : 'colored side-by-side diff',
+    'description' : ('Compare two text files or directories.'
+                     'Improves text comparison in GUI-less environments.')
 }
 
 # The MIT License (MIT)
@@ -51,8 +52,8 @@ META_INFO = {
 import sys, difflib, argparse, unicodedata, re, codecs
 # import pprint, pdb, profile
 
-if sys.hexversion < 0x02050000:
-    raise SystemExit('*** Requires python >= 2.5.0')    # pragma: no cover
+if sys.hexversion < 0x02070000:
+    raise SystemExit('*** Requires python >= 2.7.0')    # pragma: no cover
 
 import filecmp
 import os, stat
