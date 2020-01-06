@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.4.0'
+__version__=  '1.4.1'
 
 META_INFO = {
     'version'     : __version__,
@@ -1310,8 +1310,8 @@ class SidebysideDiffer(Differ):
         """
         if withcolor: return
 
-        assert width >= (7 + 6 + 1) + 2
-        textwidth = width - (7 + 6 + 1)
+        assert width >= (6 + 1 + 6 + 1 + 3)
+        textwidth = width - (6 + 1 + 6 + 1 + 3)
 
         lines = []
 
@@ -1417,8 +1417,8 @@ class UniLikeDiffer(SidebysideDiffer):
 
     def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
 
-        assert width >= (6 + 1 + 6 + 1) + 2
-        textwidth = width - (6 + 1 + 6 + 1)
+        assert width >= (6 + 1 + 6 + 1 + 3)
+        textwidth = width - (6 + 1 + 6 + 1 + 3)
 
         lines = []
 
