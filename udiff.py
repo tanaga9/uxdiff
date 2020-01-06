@@ -14,7 +14,7 @@ The MIT License (MIT)
 """
 
 __author__ =  'Tanaga'
-__version__=  '1.4.1'
+__version__=  '1.4.2'
 
 META_INFO = {
     'version'     : __version__,
@@ -50,7 +50,7 @@ META_INFO = {
 #
 
 import sys, difflib, argparse, unicodedata, re, codecs
-# import pprint, pdb, profile
+# import pprint, pdb
 
 if sys.hexversion < 0x02070000:
     raise SystemExit('*** Requires python >= 2.7.0')    # pragma: no cover
@@ -64,6 +64,8 @@ import itertools
 try:   itertools.filterfalse # python3.x
 except(AttributeError):
     itertools.filterfalse = itertools.ifilterfalse # python2.x
+
+import functools
 
 BUFSIZE = 8*1024
 
@@ -184,6 +186,9 @@ def strwidth(text, ambiguous_wide=True):
             else: width += 1
     # 文字列全体の文字幅を返す
     return width
+
+if hasattr(functools, 'lru_cache'):
+    strwidth = functools.lru_cache(maxsize=1024)(strwidth)
 
 # タブ文字を展開する。（マルチバイト文字をサポート）
 def expandtabs(text, tabsize=8, expandto='\t'):
@@ -2258,12 +2263,29 @@ def main():
         # --testオプション: テストコードを実行
         parser.add_argument('--test', action='store_true', help='Test self')
 
+    if __name__ == "__main__":
+        parser.add_argument('--profile', action='store_true', help='Profile')
+
     # オプション解析を実行
     args = parser.parse_args()
-    if 'test' in dir(args) and args.test:
+    args._colormodes = colormodes
+
+    if hasattr(args, 'test') and args.test:
         import doctest
         doctest.testmod(verbose=True)
         parser.exit()
+
+    if hasattr(args, 'profile') and args.profile:
+        import profile
+        pr = profile.Profile()
+        ret = pr.runcall(udiff, args)
+        pr.print_stats(sort=2)
+        return ret
+
+    # pdb.runcall(main)
+    return udiff(args)
+
+def udiff(args):
 
     file_or_dir1, file_or_dir2 = args.file_or_dir_1, args.file_or_dir_2
     # 必須引数の個数が所定と異なる場合は
@@ -2316,9 +2338,9 @@ def main():
     if args.no_color is True:
         withcolor = False
     else:
-        if args.color is None or colormodes[args.color] is True:
+        if args.color is None or args._colormodes[args.color] is True:
             withcolor = True
-        elif colormodes[args.color] is False:
+        elif args._colormodes[args.color] is False:
             withcolor = False
         else:
             if not sys.stdout.isatty():
@@ -2504,6 +2526,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    # doctest.testmod()
-    # profile.run('main()')
-    # pdb.runcall(main)
