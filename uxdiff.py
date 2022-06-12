@@ -1673,8 +1673,9 @@ def parse_unidiff(diff):
     patches = unidiff.PatchSet(diff)  # , encoding=encoding)
     for patch in patches:
         
-        for line in patch.patch_info:
-            yield (True, line)
+        if patch.patch_info:
+            for line in patch.patch_info:
+                yield (True, line)
 
         if patch.is_binary_file:
             continue
