@@ -13,19 +13,8 @@ License
 The MIT License (MIT)
 """
 
-__author__ =  'Tanaga'
 __version__=  '1.4.2'
 
-META_INFO = {
-    'version'     : __version__,
-    'license'     : 'MIT',
-    'author'      : __author__,
-    'email'       : 'tanaga9(@)users(.)noreply(.)github(.)com',
-    'url'         : 'https://github.com/tanaga9/udiff',
-    'keywords'    : 'colored side-by-side diff',
-    'description' : ('Compare two text files or directories.'
-                     'Improves text comparison in GUI-less environments.')
-}
 
 # The MIT License (MIT)
 # --------------------------------------------
@@ -50,6 +39,7 @@ META_INFO = {
 #
 
 import sys, difflib, argparse, unicodedata, re, codecs
+import unidiff
 # import pprint, pdb
 
 if sys.hexversion < 0x02070000:
@@ -320,298 +310,6 @@ def strwidthdivsync(textarray, width=180):
 
     return array
 
-
-
-class unidiff(object):
-    # https://github.com/matiasb/python-unidiff
-
-    # The MIT License (MIT)
-    # Copyright (c) 2012 Matias Bordese
-    #
-    # Permission is hereby granted, free of charge, to any person obtaining a copy
-    # of this software and associated documentation files (the "Software"), to deal
-    # in the Software without restriction, including without limitation the rights
-    # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    # copies of the Software, and to permit persons to whom the Software is
-    # furnished to do so, subject to the following conditions:
-    #
-    # The above copyright notice and this permission notice shall be included in all
-    # copies or substantial portions of the Software.
-    #
-    # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    # IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-    # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-    # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
-    # OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-    """Classes used by the unified diff parser to keep the diff data
-    and Unified diff parser."""
-
-    LINE_TYPE_ADD = '+'
-    LINE_TYPE_DELETE = '-'
-    LINE_TYPE_CONTEXT = ' '
-
-
-    class Hunk(object):
-        """Each of the modified blocks of a file."""
-
-        def __init__(self, src_start=0, src_len=0, tgt_start=0, tgt_len=0,
-                     section_header=''):
-            self.source_start = int(src_start)
-            self.source_length = int(src_len)
-            self.target_start = int(tgt_start)
-            self.target_length = int(tgt_len)
-            self.section_header = section_header
-            self.source_lines = []
-            self.target_lines = []
-            self.source_types = []
-            self.target_types = []
-            self.modified = 0
-            self.added = 0
-            self.deleted = 0
-            self._unidiff_generator = None
-
-        def __repr__(self):
-            return "<@@ %d,%d %d,%d @@ %s>" % (self.source_start,
-                                               self.source_length,
-                                               self.target_start,
-                                               self.target_length,
-                                               self.section_header)
-
-        def as_unified_diff(self):
-            """Output hunk data in unified diff format."""
-            if self._unidiff_generator is None:
-                self._unidiff_generator = difflib.unified_diff(self.source_lines,
-                                                               self.target_lines)
-                # throw the header information
-                for i in range(3):
-                    self._unidiff_generator.next()
-
-            head = "@@ -%d,%d +%d,%d @@\n" % (self.source_start, self.source_length,
-                                              self.target_start, self.target_length)
-            yield head
-            while True:
-                yield self._unidiff_generator.next()
-
-        def is_valid(self):
-            """Check hunk header data matches entered lines info."""
-            return (len(self.source_lines) == self.source_length and
-                    len(self.target_lines) == self.target_length)
-
-        def append_context_line(self, line):
-            """Add a new context line to the hunk."""
-            self.source_lines.append(line)
-            self.target_lines.append(line)
-            self.source_types.append(unidiff.LINE_TYPE_CONTEXT)
-            self.target_types.append(unidiff.LINE_TYPE_CONTEXT)
-
-        def append_added_line(self, line):
-            """Add a new added line to the hunk."""
-            self.target_lines.append(line)
-            self.target_types.append(unidiff.LINE_TYPE_ADD)
-            self.added += 1
-
-        def append_deleted_line(self, line):
-            """Add a new deleted line to the hunk."""
-            self.source_lines.append(line)
-            self.source_types.append(unidiff.LINE_TYPE_DELETE)
-            self.deleted += 1
-
-        def add_to_modified_counter(self, mods):
-            """Update the number of lines modified in the hunk."""
-            self.deleted -= mods
-            self.added -= mods
-            self.modified += mods
-
-
-    class PatchedFile(list):
-        """Data of a patched file, each element is a Hunk."""
-
-        def __init__(self, source='', target=''):
-            super(unidiff.PatchedFile, self).__init__()
-            self.source_file = source
-            self.target_file = target
-
-        def __repr__(self):
-            return "<%s: %s>" % (self.target_file,
-                                 super(unidiff.PatchedFile, self).__repr__())
-
-        def __str__(self):
-            s = self.path + "\n"
-            for e in enumerate([repr(e) for e in self]):
-                s += "Hunk #%s: %s\n" % e
-            s += "\n"
-            return s
-
-        def as_unified_diff(self):
-            """Output file changes in unified diff format."""
-            source = "--- %s\n" % self.source_file
-            yield source
-
-            target = "+++ %s\n" % self.target_file
-            yield target
-
-            for hunk in self:
-                hunk_data = hunk.as_unified_diff()
-                for line in hunk_data:
-                    yield line
-
-        @property
-        def path(self):
-            """Return the file path abstracted from VCS."""
-            # TODO: improve git/hg detection
-            if (self.source_file.startswith('a/') and
-                    self.target_file.startswith('b/')):
-                filepath = self.source_file[2:]
-            elif (self.source_file.startswith('a/') and
-                    self.target_file == '/dev/null'):
-                filepath = self.source_file[2:]
-            elif (self.target_file.startswith('b/') and
-                    self.source_file == '/dev/null'):
-                filepath = self.target_file[2:]
-            else:
-                filepath = self.source_file
-            return filepath
-
-        @property
-        def added(self):
-            """Return the file total added lines."""
-            return sum([hunk.added for hunk in self])
-
-        @property
-        def deleted(self):
-            """Return the file total deleted lines."""
-            return sum([hunk.deleted for hunk in self])
-
-        @property
-        def modified(self):
-            """Return the file total modified lines."""
-            return sum([hunk.modified for hunk in self])
-
-        @property
-        def is_added_file(self):
-            """Return True if this patch adds a file."""
-            return (len(self) == 1 and self[0].source_start == 0 and
-                    self[0].source_length == 0)
-
-        @property
-        def is_deleted_file(self):
-            """Return True if this patch deletes a file."""
-            return (len(self) == 1 and self[0].target_start == 0 and
-                    self[0].target_length == 0)
-
-        def is_modified_file(self):
-            """Return True if this patch modifies a file."""
-            return not (self.is_added_file or self.is_deleted_file)
-
-
-    class PatchSet(list):
-        """A list of PatchedFiles."""
-
-        def as_unified_diff(self):
-            """Output patch data in unified diff format.
-
-            It won't necessarily match the original unified diff,
-            but it should be equivalent.
-            """
-            for patched_file in self:
-                data = patched_file.as_unified_diff()
-                for line in data:
-                    yield line
-
-        def __str__(self):
-            return '[' + ','.join([str(e) for e in self]) + ']'
-
-    # """Useful constants and regexes used by the module."""
-
-    RE_SOURCE_FILENAME = re.compile(r'^--- (?P<filename>[^\t\n]+)')
-    RE_TARGET_FILENAME = re.compile(r'^\+\+\+ (?P<filename>[^\t\n]+)')
-
-    # @@ (source offset, length) (target offset, length) @@ (section header)
-    RE_HUNK_HEADER = re.compile(
-        r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))?\ @@[ ]?(.*)")
-
-    #   kept line (context)
-    # + added line
-    # - deleted line
-    # \ No newline case (ignore)
-    RE_HUNK_BODY_LINE = re.compile(r'^([- \+\\])')
-
-    class UnidiffParseException(Exception):
-        """Exception when parsing the diff data."""
-        pass
-
-
-    @staticmethod
-    def _parse_hunk(diff, source_start, source_len, target_start, target_len,
-                    section_header):
-        """Parse a diff hunk details."""
-        hunk = unidiff.Hunk(source_start, source_len, target_start, target_len,
-                            section_header)
-        modified = 0
-        deleting = 0
-        for line in diff:
-            valid_line = unidiff.RE_HUNK_BODY_LINE.match(line)
-            if not valid_line:
-                raise unidiff.UnidiffParseException('Hunk diff data expected')
-
-            action = valid_line.group(0)
-            original_line = line[1:]
-            if action == unidiff.LINE_TYPE_ADD:
-                hunk.append_added_line(original_line)
-                # modified lines == deleted immediately followed by added
-                if deleting > 0:
-                    modified += 1
-                    deleting -= 1
-            elif action == unidiff.LINE_TYPE_DELETE:
-                hunk.append_deleted_line(original_line)
-                deleting += 1
-            elif action == unidiff.LINE_TYPE_CONTEXT:
-                hunk.append_context_line(original_line)
-                hunk.add_to_modified_counter(modified)
-                # reset modified auxiliar variables
-                deleting = 0
-                modified = 0
-
-            # check hunk len(old_lines) and len(new_lines) are ok
-            if hunk.is_valid():
-                break
-
-        return hunk
-
-    @staticmethod
-    def parse_unidiff(diff):
-        """Unified diff parser, takes a file-like object as argument."""
-        ret = unidiff.PatchSet()
-        current_patch = None
-
-        for line in diff:
-            # check for source file header
-            check_source = unidiff.RE_SOURCE_FILENAME.match(line)
-            if check_source:
-                source_file = check_source.group('filename')
-                current_patch = None
-                continue
-
-            # check for target file header
-            check_target = unidiff.RE_TARGET_FILENAME.match(line)
-            if check_target:
-                target_file = check_target.group('filename')
-                current_patch = unidiff.PatchedFile(source_file, target_file)
-                ret.append(current_patch)
-                continue
-
-            # check for hunk header
-            re_hunk_header = unidiff.RE_HUNK_HEADER.match(line)
-            if re_hunk_header:
-                hunk_info = re_hunk_header.groups()
-                hunk = unidiff._parse_hunk(diff, *hunk_info)
-                current_patch.append(hunk)
-        return ret
-    pass
 
 # テキスト差分取得クラス
 # 内部処理にdifflibのSequenceMatcherクラスを使用している
@@ -1961,8 +1659,8 @@ def parse_unidiff(diff):
     ...     else:
     ...         for hunk in diff:
     ...             import pprint
-    ...             pprint.pprint(hunk.source_lines)
-    ...             pprint.pprint(hunk.target_lines)
+    ...             pprint.pprint([s[1:] for s in hunk.source])
+    ...             pprint.pprint([s[1:] for s in hunk.target])
     ...
     diff -r dab26450e4b1 text2.txt
     --- a/text2.txt     Sun Dec 15 17:38:49 2013 +0900
@@ -1971,44 +1669,22 @@ def parse_unidiff(diff):
     ['hogee', 'bar', 'foo']
     >>>
     """
-    current_patch = None
-    source_file = None
 
-    for line in diff:
-        # check for source file header
-        check_source = unidiff.RE_SOURCE_FILENAME.match(line)
-        if check_source:
-            source_file = check_source.group('filename')
-            if current_patch is not None:
-                yield (False, current_patch) # yield not junk
-            current_patch = None
-            yield (True, line.rstrip('\r\n')) # yield source header
+    patches = unidiff.PatchSet(diff)  # , encoding=encoding)
+    for patch in patches:
+        
+        for line in patch.patch_info:
+            yield (True, line)
+
+        if patch.is_binary_file:
             continue
 
-        # check for target file header
-        check_target = unidiff.RE_TARGET_FILENAME.match(line)
-        if source_file and check_target:
-            target_file = check_target.group('filename')
-            current_patch = unidiff.PatchedFile(source_file, target_file)
-            yield (True, line.rstrip('\r\n'))  # yield target header
-            continue
-
-        source_file = None
-
-        # check for hunk header
-        re_hunk_header = unidiff.RE_HUNK_HEADER.match(line)
-        if current_patch is not None and re_hunk_header:
-            hunk_info = re_hunk_header.groups()
-            hunk = unidiff._parse_hunk(diff, *hunk_info)
-            current_patch.append(hunk)
-        else:
-            if current_patch is not None:
-                yield (False, current_patch) # yield not junk
-                current_patch = None
-            yield (True, line.rstrip('\r\n')) # yield junk
-
-    if current_patch is not None:
-        yield (False, current_patch) # yield not junk
+        if patch.source_file is not None:
+            yield (True, '--- ' + patch.source_file)
+        if patch.target_file is not None:
+            yield (True, '+++ ' + patch.target_file)
+        
+        yield (False, patch)
     return
 
 def parse_unidiff_and_original_diff(
@@ -2115,8 +1791,8 @@ def parse_unidiff_and_original_diff(
         if flag: yield diff
         else:
             for hunk in diff:
-                lines1 = [expandtabs(line, tabsize=4) for line in hunk.source_lines]
-                lines2 = [expandtabs(line, tabsize=4) for line in hunk.target_lines]
+                lines1 = [expandtabs(str(line)[1:], tabsize=4) for line in hunk.source_lines()]
+                lines2 = [expandtabs(str(line)[1:], tabsize=4) for line in hunk.target_lines()]
 
                 textlinediffs = []
                 for diff in differ.pretty_compare(lines1, lines2, width, withcolor,
