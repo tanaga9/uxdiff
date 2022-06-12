@@ -12,7 +12,7 @@ META_INFO = {
     'license'     : 'MIT',
     'author'      : __author__,
     'email'       : 'tanaga9(@)users(.)noreply(.)github(.)com',
-    'url'         : 'https://github.com/tanaga9/udiff',
+    'url'         : 'https://github.com/tanaga9/uxdiff',
     'keywords'    : 'colored side-by-side diff',
     'description' : ('Compare two text files or directories.'
                      'Improves text comparison in GUI-less environments.')
@@ -22,7 +22,7 @@ if sys.hexversion < 0x02070000:
     raise SystemExit("*** Requires python >= 2.7.0")
 
 setup(
-    name='udiff',
+    name='uxdiff',
     version=META_INFO['version'],
     author=META_INFO['author'],
     author_email=META_INFO['email'].replace('(', '').replace(')', ''),
@@ -30,8 +30,8 @@ setup(
     description=META_INFO['description'],
     keywords=META_INFO['keywords'],
     url=META_INFO['url'],
-    py_modules=['udiff'],
-    scripts=['udiff'],
+    py_modules=['uxdiff'],
+    scripts=['uxdiff'],
     install_requires=[
         'unidiff~=0.7.3',
     ],

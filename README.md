@@ -1,5 +1,5 @@
 
-udiff
+uxdiff
 ========
 
 Compares the two sequences well and outputs the difference
@@ -9,7 +9,7 @@ Install
 ---------
 
 ```
-pip install git+https://github.com/tanaga9/udiff
+pip install git+https://github.com/tanaga9/uxdiff
 ```
 
 
@@ -35,7 +35,7 @@ text2.txt
 ```
 
 
-`udiff text1.txt text2.txt --color never`
+`uxdiff text1.txt text2.txt --color never`
 
 ```
 --- text1.txt (utf-8)
