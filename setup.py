@@ -5,7 +5,7 @@ import sys
 from distutils.core import setup
 
 __author__ =  'Tanaga'
-__version__=  '1.4.4'
+__version__=  '1.4.5'
 
 META_INFO = {
     'version'     : __version__,
@@ -33,6 +33,6 @@ setup(
     py_modules=['uxdiff'],
     scripts=['uxdiff'],
     install_requires=[
-        'unidiff~=0.7.3',
+        'unidiff>=0.6.0',
     ],
 )
