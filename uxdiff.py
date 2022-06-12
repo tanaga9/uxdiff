@@ -4,7 +4,7 @@
 #from __future__ import print_function
 
 """
-Whats udiff
+Whats uxdiff
 ==============
 Compare two text files or directories; generate the resulting delta.
 
@@ -13,7 +13,7 @@ License
 The MIT License (MIT)
 """
 
-__version__=  '1.4.2'
+__version__=  '1.4.3'
 
 
 # The MIT License (MIT)
@@ -1954,14 +1954,14 @@ def main():
     if hasattr(args, 'profile') and args.profile:
         import profile
         pr = profile.Profile()
-        ret = pr.runcall(udiff, args)
+        ret = pr.runcall(uxdiff, args)
         pr.print_stats(sort=2)
         return ret
 
     # pdb.runcall(main)
-    return udiff(args)
+    return uxdiff(args)
 
-def udiff(args):
+def uxdiff(args):
 
     file_or_dir1, file_or_dir2 = args.file_or_dir_1, args.file_or_dir_2
     # 必須引数の個数が所定と異なる場合は
