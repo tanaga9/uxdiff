@@ -5,7 +5,7 @@ import sys
 from distutils.core import setup
 
 __author__ =  'Tanaga'
-__version__=  '1.4.3'
+__version__=  '1.4.4'
 
 META_INFO = {
     'version'     : __version__,

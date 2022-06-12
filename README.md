@@ -60,6 +60,8 @@ text2.txt
 
 supported multi-byte string. set the encoding with an argument if you need.
 
+[See more examples](examples)
+
 
 License
 --------------------
