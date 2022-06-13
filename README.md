@@ -9,7 +9,7 @@ Install
 ---------
 
 ```
-pip install git+https://github.com/tanaga9/uxdiff
+pip install uxdiff
 ```
 
 
