@@ -4,16 +4,10 @@
 #from __future__ import print_function
 
 """
-Whats uxdiff
-==============
 Compare two text files or directories; generate the resulting delta.
-
-License
-=======
-The MIT License (MIT)
 """
 
-__version__=  '1.4.3'
+__version__=  '1.4.5'
 
 
 # The MIT License (MIT)
@@ -59,15 +53,7 @@ import functools
 
 BUFSIZE = 8*1024
 
-# siff.pyとは
-# ===========
-# 2つのテキストファイルの差分を取り、人間にとって分かりやすい比較形式で表示する。
-# 差分取得結果は等幅フォントを表示するターミナル上で直接表示できる。
-# またテキスト差分取得をサポートするモジュールを提供する
-#
-# ライセンス
-# ==========
-# The MIT License (MIT)
+colormodes = {'always': True, 'never': False, 'auto': None}
 
 global_withbg = False
 def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=None):
@@ -1828,9 +1814,7 @@ def getdefaultencoding():
     if defaultencoding == 'ascii': return 'utf8'
     return defaultencoding
 
-def main():
-    """main function"""
-
+def make_argparser():
     # オプション解析
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
@@ -1922,7 +1906,6 @@ def main():
     parser.add_argument('--ignore-crlf', action='store_true', default=False,
                         help='Ignore carriage return (\'\\r\') and line feed (\'\\n\') (default False)')
 
-    colormodes = {'always': True, 'never': False, 'auto': None}
     # --colorオプション: 色付き表示の指定（デフォルトはauto）
     parser.add_argument('--color', nargs='?', choices=colormodes.keys(),
                         metavar='WHEN', type=str, default='auto',
@@ -1935,6 +1918,13 @@ def main():
     parser.add_argument('--withbg', action='store_true', default=False,
                         help='Colored diff with background color. '
                         'It will be ignored if no-color option. (default False)')
+
+    return parser 
+
+def main():
+    """main function"""
+
+    parser = make_argparser()
 
     if __name__ == "__main__":
         # --testオプション: テストコードを実行
@@ -1960,9 +1950,9 @@ def main():
         return ret
 
     # pdb.runcall(main)
-    return uxdiff(args)
+    return uxdiff(args, parser)
 
-def uxdiff(args):
+def uxdiff(args, parser):
 
     file_or_dir1, file_or_dir2 = args.file_or_dir_1, args.file_or_dir_2
     # 必須引数の個数が所定と異なる場合は
