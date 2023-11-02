@@ -986,10 +986,10 @@ class SidebysideDiffer(Differ):
         lines = []
         line = ''
 
-        if num1  == None: num1  = ''
-        if num2  == None: num2  = ''
-        if text1 == None: text1 = ''
-        if text2 == None: text2 = ''
+        if num1  is None: num1  = ''
+        if num2  is None: num2  = ''
+        if text1 is None: text1 = ''
+        if text2 is None: text2 = ''
 
         text1 = text1.rstrip('\r\n')
         text2 = text2.rstrip('\r\n')
@@ -2230,14 +2230,14 @@ def uxdiff(args, parser):
             lines2 = codecs.open(file2, 'r', encoding=args.enc_file2).readlines()
         # for Python2.x
         except IOError:
-            if lines1 == None:
+            if lines1 is None:
                 filename = file1
             else:
                 filename = file2
             print('[Errno 2] No such file or directory: \'' + filename + '\'')
             return 1
         except UnicodeDecodeError:
-            if lines1 == None:
+            if lines1 is None:
                 filename = file1
                 encoding_text = args.enc_file1
                 optionname = '--enc-file1'
