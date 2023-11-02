@@ -50,6 +50,7 @@ except(AttributeError):
     itertools.filterfalse = itertools.ifilterfalse # python2.x
 
 import functools
+import itertools
 
 BUFSIZE = 8*1024
 
@@ -391,6 +392,29 @@ class Differ:
 
         Example:
 
+        >>> import pprint
+        >>>
+        >>> pprint.pprint(list(Differ().compare([
+        ... 1, 2, 3, (4, 5), 6, 7, 8
+        ... ], [
+        ... 1, 2, 33, 4, 5, 6, 7, 8
+        ... ])))
+        [True,
+         ((' ', 0, 1, 0, 1), None),
+         ((' ', 1, 2, 1, 2), None),
+         False,
+         True,
+         (('|', 2, 3, 2, 33), None),
+         (('|', 3, (4, 5), 3, 4), None),
+         (('>', None, None, 4, 5), None),
+         False,
+         True,
+         ((' ', 4, 6, 5, 6), None),
+         ((' ', 5, 7, 6, 7), None),
+         ((' ', 6, 8, 7, 8), None),
+         False,
+         None]
+        >>>
         >>> text1 = '''one
         ... two
         ... three
@@ -400,8 +424,6 @@ class Differ:
         ... tree
         ... emu
         ... '''.splitlines(1)
-        >>>
-        >>> import pprint
         >>>
         >>> pprint.pprint(list(Differ().compare(text1, text2)), width=100)
         [True,
@@ -490,15 +512,34 @@ class Differ:
                 yield True
                 # タグが変更の場合は
                 if   tag == 'replace':
-                    # さらにその変更の纏まり（複数行）のなかから、
-                    # もっともマッチした行を検知し、その前後で
-                    # 再びもっともマッチした行を検知し、その前後で・・・
-                    # という再帰処理を行い、もっとも見た目が良い前後比較を作成する
-                    gen = self._fancy_replace(text1, text1_low, text1_high,
-                                              text2, text2_low, text2_high)
-                    # ジェネレータを受け取るので要素を生成してyieldする
-                    for line in gen:
-                        yield line
+                    try:
+                        for num1, num2 in itertools.zip_longest(
+                            range(text1_low, text1_high),
+                            range(text2_low, text2_high)):
+                            if num1 is not None: iter(text1[num1])
+                            if num2 is not None: iter(text2[num2])
+                    except TypeError:
+                        for num1, num2 in itertools.zip_longest(
+                            range(text1_low, text1_high),
+                            range(text2_low, text2_high)):
+                            code = '|'
+                            if   num1 is None:
+                                code = '>'
+                            elif num2 is None:
+                                code = '<'
+                            yield ((code,
+                                    num1, text1[num1] if num1 is not None else None,
+                                    num2, text2[num2] if num2 is not None else None), None)
+                    else:
+                        # さらにその変更の纏まり（複数行）のなかから、
+                        # もっともマッチした行を検知し、その前後で
+                        # 再びもっともマッチした行を検知し、その前後で・・・
+                        # という再帰処理を行い、もっとも見た目が良い前後比較を作成する
+                        gen = self._fancy_replace(text1, text1_low, text1_high,
+                                                  text2, text2_low, text2_high)
+                        # ジェネレータを受け取るので要素を生成してyieldする
+                        for line in gen:
+                            yield line
                 # タグが削除の場合は
                 elif tag == 'delete':
                     # 削除分の行を個別に生成して返す

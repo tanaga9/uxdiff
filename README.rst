@@ -197,6 +197,29 @@ Compare two text files or directories; generate the resulting delta.
 
       Example:
 
+      >>> import pprint
+      >>>
+      >>> pprint.pprint(list(Differ().compare([
+      ... 1, 2, 3, (4, 5), 6, 7, 8
+      ... ], [
+      ... 1, 2, 33, 4, 5, 6, 7, 8
+      ... ])))
+      [True,
+       ((' ', 0, 1, 0, 1), None),
+       ((' ', 1, 2, 1, 2), None),
+       False,
+       True,
+       (('|', 2, 3, 2, 33), None),
+       (('|', 3, (4, 5), 3, 4), None),
+       (('>', None, None, 4, 5), None),
+       False,
+       True,
+       ((' ', 4, 6, 5, 6), None),
+       ((' ', 5, 7, 6, 7), None),
+       ((' ', 6, 8, 7, 8), None),
+       False,
+       None]
+      >>>
       >>> text1 = '''one
       ... two
       ... three
@@ -206,8 +229,6 @@ Compare two text files or directories; generate the resulting delta.
       ... tree
       ... emu
       ... '''.splitlines(1)
-      >>>
-      >>> import pprint
       >>>
       >>> pprint.pprint(list(Differ().compare(text1, text2)), width=100)
       [True,
