@@ -4,7 +4,7 @@
 #from __future__ import print_function
 
 """
-Compare two text files or directories; generate the resulting delta.
+Compare two text files or directories (or sequences); generate the differences.
 """
 
 __version__=  '1.4.5'
@@ -301,54 +301,9 @@ def strwidthdivsync(textarray, width=180):
 # テキスト差分取得クラス
 # 内部処理にdifflibのSequenceMatcherクラスを使用している
 class Differ:
-    r"""Differ is a class for comparing sequences of lines of text, and
-    producing human-readable differences or deltas.
+    r"""Differ is a class for comparing sequences.
 
-    Differ uses SequenceMatcher both to compare sequences of lines,
-    and to compare sequences of characters within similar (near-matching) lines.
-
-    Example:
-
-    >>> text1 = '''  1. Beautiful is better than ugly.
-    ...   2. Explicit is better than implicit.
-    ...   3. Simple is better than complex.
-    ...   4. Complex is better than complicated.
-    ... '''.splitlines(1)
-    >>>
-    >>> text2 = '''  1. Beautiful is better than ugly.
-    ...   3.   Simple is better than complex.
-    ...   4. Complicated is better than complex.
-    ...   5. Flat is better than nested.
-    ... '''.splitlines(1)
-    >>>
-    >>> d = Differ()
-    >>>
-    >>> result = list(d.compare(text1, text2))
-    >>>
-    >>> import pprint
-    >>> pprint.pprint(result, width=120)
-    [True,
-     ((' ', 0, '  1. Beautiful is better than ugly.\n', 0, '  1. Beautiful is better than ugly.\n'), None),
-     False,
-     True,
-     (('<', 1, '  2. Explicit is better than implicit.\n', None, None), None),
-     (('|', 2, '  3. Simple is better than complex.\n', 1, '  3.   Simple is better than complex.\n'),
-      [(' ', '  3.', '  3.'),
-       ('+', None, '  '),
-       (' ', ' Simple is better than complex.\n', ' Simple is better than complex.\n')]),
-     (('|', 3, '  4. Complex is better than complicated.\n', 2, '  4. Complicated is better than complex.\n'),
-      [(' ', '  4. Compl', '  4. Compl'),
-       ('+', None, 'icat'),
-       (' ', 'e', 'e'),
-       ('!', 'x', 'd'),
-       (' ', ' is better than compl', ' is better than compl'),
-       ('-', 'icat', None),
-       (' ', 'e', 'e'),
-       ('!', 'd', 'x'),
-       (' ', '.\n', '.\n')]),
-     (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
-     False,
-     None]
+    Differ uses SequenceMatcher both to compare sequences.
     """
 
     # Differクラスの初期化処理、
@@ -386,18 +341,26 @@ class Differ:
         return
 
     # 2つのテキストの差分を取得する
-    def compare(self, text1, text2):
+    def compare(self, seq1, seq2):
         r"""
-        Compare two sequences of lines; generate the resulting delta.
+        Compare two sequences; return a generator of differences.
+
+        Requirement is
+
+        * both arguments are iterable.
+        * items in a sequences must be hashable.
+
+        If the items of a sequences are iterable, detect similar ones as needed.
+
 
         Example:
 
         >>> import pprint
         >>>
         >>> pprint.pprint(list(Differ().compare([
-        ... 1, 2, 3, (4, 5), 6, 7, 8
+        ...    1, 2, 3, (4, 5), 6, 7, 8
         ... ], [
-        ... 1, 2, 33, 4, 5, 6, 7, 8
+        ...    1, 2, 33, 4, 5, 6, 7, 8
         ... ])))
         [True,
          ((' ', 0, 1, 0, 1), None),
@@ -444,7 +407,44 @@ class Differ:
           [('-', 'thr', None), (' ', 'e', 'e'), ('!', 'e', 'mu'), (' ', '\n', '\n')]),
          False,
          None]
-
+        >>>
+        >>> text1 = '''  1. Beautiful is better than ugly.
+        ...   2. Explicit is better than implicit.
+        ...   3. Simple is better than complex.
+        ...   4. Complex is better than complicated.
+        ... '''.splitlines(1)
+        >>>
+        >>> text2 = '''  1. Beautiful is better than ugly.
+        ...   3.   Simple is better than complex.
+        ...   4. Complicated is better than complex.
+        ...   5. Flat is better than nested.
+        ... '''.splitlines(1)
+        >>>
+        >>> diff = Differ().compare(text1, text2)
+        >>> pprint.pprint(list(diff), width=120)
+        [True,
+         ((' ', 0, '  1. Beautiful is better than ugly.\n', 0, '  1. Beautiful is better than ugly.\n'), None),
+         False,
+         True,
+         (('<', 1, '  2. Explicit is better than implicit.\n', None, None), None),
+         (('|', 2, '  3. Simple is better than complex.\n', 1, '  3.   Simple is better than complex.\n'),
+          [(' ', '  3.', '  3.'),
+           ('+', None, '  '),
+           (' ', ' Simple is better than complex.\n', ' Simple is better than complex.\n')]),
+         (('|', 3, '  4. Complex is better than complicated.\n', 2, '  4. Complicated is better than complex.\n'),
+          [(' ', '  4. Compl', '  4. Compl'),
+           ('+', None, 'icat'),
+           (' ', 'e', 'e'),
+           ('!', 'x', 'd'),
+           (' ', ' is better than compl', ' is better than compl'),
+           ('-', 'icat', None),
+           (' ', 'e', 'e'),
+           ('!', 'd', 'x'),
+           (' ', '.\n', '.\n')]),
+         (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
+         False,
+         None]
+         
         +------------+--------------------------------------------------------------------------------------------+
         | Yields     | Meaning                                                                                    |
         +============+============================================================================================+
@@ -492,7 +492,7 @@ class Differ:
         """
 
         # SequenceMatcherのインスタンスを生成する
-        cruncher = difflib.SequenceMatcher(self.linejunk, text1, text2)
+        cruncher = difflib.SequenceMatcher(self.linejunk, seq1, seq2)
 
         # コンテキスト差分オプションがNoneでない場合は
         if self.context != None:
@@ -507,60 +507,60 @@ class Differ:
         for opcode in opcodes:
             # 差分の纏まりごとにループする
             for (tag,
-                 text1_low, text1_high,
-                 text2_low, text2_high) in opcode:
+                 seq1_low, seq1_high,
+                 seq2_low, seq2_high) in opcode:
                 yield True
                 # タグが変更の場合は
                 if   tag == 'replace':
                     try:
                         for num1, num2 in itertools.zip_longest(
-                            range(text1_low, text1_high),
-                            range(text2_low, text2_high)):
-                            if num1 is not None: iter(text1[num1])
-                            if num2 is not None: iter(text2[num2])
+                            range(seq1_low, seq1_high),
+                            range(seq2_low, seq2_high)):
+                            if num1 is not None: iter(seq1[num1])
+                            if num2 is not None: iter(seq2[num2])
                     except TypeError:
                         for num1, num2 in itertools.zip_longest(
-                            range(text1_low, text1_high),
-                            range(text2_low, text2_high)):
+                            range(seq1_low, seq1_high),
+                            range(seq2_low, seq2_high)):
                             code = '|'
                             if   num1 is None:
                                 code = '>'
                             elif num2 is None:
                                 code = '<'
                             yield ((code,
-                                    num1, text1[num1] if num1 is not None else None,
-                                    num2, text2[num2] if num2 is not None else None), None)
+                                    num1, seq1[num1] if num1 is not None else None,
+                                    num2, seq2[num2] if num2 is not None else None), None)
                     else:
-                        # さらにその変更の纏まり（複数行）のなかから、
-                        # もっともマッチした行を検知し、その前後で
-                        # 再びもっともマッチした行を検知し、その前後で・・・
+                        # さらにその変更の纏まり（複数item）のなかから、
+                        # もっともマッチしたitemを検知し、その前後で
+                        # 再びもっともマッチしたitemを検知し、その前後で・・・
                         # という再帰処理を行い、もっとも見た目が良い前後比較を作成する
-                        gen = self._fancy_replace(text1, text1_low, text1_high,
-                                                  text2, text2_low, text2_high)
+                        gen = self._fancy_replace(seq1, seq1_low, seq1_high,
+                                                  seq2, seq2_low, seq2_high)
                         # ジェネレータを受け取るので要素を生成してyieldする
                         for line in gen:
                             yield line
                 # タグが削除の場合は
                 elif tag == 'delete':
-                    # 削除分の行を個別に生成して返す
+                    # 削除分のitemを個別に生成して返す
                     # 削除のタグは'<'とし、必要のない情報についてはNoneで返す
-                    for num1 in range(text1_low, text1_high):
-                        yield (('<', num1, text1[num1], None, None), None)
+                    for num1 in range(seq1_low, seq1_high):
+                        yield (('<', num1, seq1[num1], None, None), None)
                 # タグが追加の場合は
                 elif tag == 'insert':
-                    # 追加分の行を個別に生成して返す
+                    # 追加分のitemを個別に生成して返す
                     # 追加のタグは'>'とし、必要のない情報についてはNoneで返す
-                    for num2 in range(text2_low, text2_high):
-                        yield (('>', None, None, num2, text2[num2]), None)
+                    for num2 in range(seq2_low, seq2_high):
+                        yield (('>', None, None, num2, seq2[num2]), None)
                 # タグが一致の場合は
                 elif tag == 'equal':
-                    # 互いの行数が一致することをassertで確認する
-                    assert text1_high - text1_low == text2_high - text2_low
-                    # 一致分の行を個別に生成して返す
+                    # 互いのitem数が一致することをassertで確認する
+                    assert seq1_high - seq1_low == seq2_high - seq2_low
+                    # 一致分のitemを個別に生成して返す
                     # 一致のタグは' 'とし、必要のない情報についてはNoneで返す
-                    for num1, num2 in zip(range(text1_low, text1_high),
-                                          range(text2_low, text2_high)):
-                        yield ((' ', num1, text1[num1], num2, text2[num2]), None)
+                    for num1, num2 in zip(range(seq1_low, seq1_high),
+                                          range(seq2_low, seq2_high)):
+                        yield ((' ', num1, seq1[num1], num2, seq2[num2]), None)
                 # その他のタグを受け取った場合は
                 else:
                     # 予定外なので例外を飛ばす
@@ -577,8 +577,8 @@ class Differ:
     # そして、ライン内違い採点は類似した一組の上でされます。
     # しばしばそれの価値があるが、たくさんの仕事。
     def _fancy_replace(self,
-                       text1, text1_low, text1_high,
-                       text2, text2_low, text2_high):
+                       seq1, seq1_low, seq1_high,
+                       seq2, seq2_low, seq2_high):
         r"""
         When replacing one block of lines with another, search the blocks
         for *similar* lines; the best-matching pair (if any) is used as a
@@ -633,7 +633,7 @@ class Differ:
         best_found = False
         cruncher = difflib.SequenceMatcher(self.charjunk)
         # 1st indices of equal lines (if any)
-        equal_text1_pos, equal_text2_pos = None, None
+        equal_seq1_pos, equal_seq2_pos = None, None
 
         # search for the pair that matches best without being identical
         # (identical lines must be junk lines, & we don't want to synch up
@@ -642,24 +642,24 @@ class Differ:
         # （同一の文字列はジャンク文字列でなければならない、
         # 　特別そうしたい場合以外は、ジャンクで同期すべきではない）
 
-        # text2について繰り返し処理する
-        for text2_pos in range(text2_low, text2_high):
-            # 取得したtext2の1行をSequenceMatcherにセットする
-            cruncher.set_seq2(text2[text2_pos])
-            # text1について繰り返し処理する
-            for text1_pos in range(text1_low, text1_high):
-                # 取得したtext1の1行とtext2の1行が完全一致する場合は
-                if text1[text1_pos] == text2[text2_pos]:
+        # seq2について繰り返し処理する
+        for seq2_pos in range(seq2_low, seq2_high):
+            # 取得したseq2の1itemをSequenceMatcherにセットする
+            cruncher.set_seq2(seq2[seq2_pos])
+            # seq1について繰り返し処理する
+            for seq1_pos in range(seq1_low, seq1_high):
+                # 取得したseq1の1itemとseq2の1itemが完全一致する場合は
+                if seq1[seq1_pos] == seq2[seq2_pos]:
                     # すでに完全一致ペアが見つかって居ない場合は
-                    if equal_text1_pos is None:
+                    if equal_seq1_pos is None:
                         # 今回のペアを最初の完全一致ペアとして記憶する
-                        equal_text1_pos = text1_pos
-                        equal_text2_pos = text2_pos
+                        equal_seq1_pos = seq1_pos
+                        equal_seq2_pos = seq2_pos
                     # このペアでやるべきことは何も無いので次のループへ
                     continue
 
-                # 取得したtext1の1行をSequenceMatcherにセットする
-                cruncher.set_seq1(text1[text1_pos])
+                # 取得したseq1の1itemをSequenceMatcherにセットする
+                cruncher.set_seq1(seq1[seq1_pos])
                 # computing similarity is expensive, so use the quick
                 # upper bounds first -- have seen this speed up messy
                 # compares by a factor of 3.
@@ -697,8 +697,8 @@ class Differ:
                     # 超えるマッチ率のペア）を見つけた
                     best_found = True
                     best_ratio = cruncher.ratio()
-                    best_i = text1_pos
-                    best_j = text2_pos
+                    best_i = seq1_pos
+                    best_j = seq2_pos
 
         # ------------------------------------------------------------
 
@@ -708,71 +708,71 @@ class Differ:
             # 『同一でない「かなり近い」ペア』が無い
 
             # 同一のペアも無い場合は
-            if equal_text1_pos is None:
+            if equal_seq1_pos is None:
                 # no identical pair either -- treat it as a straight replace
                 # 単純に完全に置き換えられた文字列の集まりとする
                 # '|'が存在せず、'>'および'<'、もしくは'>'および'<'
                 # の集まりとする。
-                # どちらが採用されるかはそれぞれの行数によって決まる
-                # 行が少ないほうが先に返される。
+                # どちらが採用されるかはそれぞれのitem数によって決まる
+                # itemが少ないほうが先に返される。
 
                 # dump the shorter block first -- reduces the burden on short-term
                 # memory if the blocks are of very different sizes
-                # 最初により少ない行数を処理する
-                # これは行数非常に異なるサイズの場合に、メモリ上の負荷を減らす効果がある
+                # 最初により少ないitem数を処理する
+                # これはitem数非常に異なるサイズの場合に、メモリ上の負荷を減らす効果がある
 
-                # text2のほうがtext1より行数が少ない場合は
-                if text2_high - text2_low < text1_high - text1_low:
-                    # text2について全行を'>'としてyieldする
-                    for num2 in range(text2_low, text2_high):
-                        yield (('>', None, None, num2, text2[num2]), None)
-                    # text1について全行を'<'としてyieldする
-                    for num1 in range(text1_low, text1_high):
-                        yield (('<', num1, text1[num1], None, None), None)
-                # text1のほうがtext2より行数が少ない場合は
+                # seq2のほうがseq1よりitem数が少ない場合は
+                if seq2_high - seq2_low < seq1_high - seq1_low:
+                    # seq2について全itemを'>'としてyieldする
+                    for num2 in range(seq2_low, seq2_high):
+                        yield (('>', None, None, num2, seq2[num2]), None)
+                    # seq1について全itemを'<'としてyieldする
+                    for num1 in range(seq1_low, seq1_high):
+                        yield (('<', num1, seq1[num1], None, None), None)
+                # seq1のほうがseq2よりitem数が少ない場合は
                 else:
-                    # text1について全行を'<'としてyieldする
-                    for num1 in range(text1_low, text1_high):
-                        yield (('<', num1, text1[num1], None, None), None)
-                    # text2について全行を'>'としてyieldする
-                    for num2 in range(text2_low, text2_high):
-                        yield (('>', None, None, num2, text2[num2]), None)
+                    # seq1について全itemを'<'としてyieldする
+                    for num1 in range(seq1_low, seq1_high):
+                        yield (('<', num1, seq1[num1], None, None), None)
+                    # seq2について全itemを'>'としてyieldする
+                    for num2 in range(seq2_low, seq2_high):
+                        yield (('>', None, None, num2, seq2[num2]), None)
                 return
             # no close pair, but an identical pair -- synch up on that
             # 『同一でない「かなり近い」ペア』は無いが、
             # 同一のペアがあるので、それで同期を取る
-            best_i = equal_text1_pos
-            best_j = equal_text2_pos
+            best_i = equal_seq1_pos
+            best_j = equal_seq2_pos
             best_ratio = 1.0
         else:
             # there's a close pair, so forget the identical pair (if any)
             # 『同一でない「かなり近い」ペア』が有る。
             # そのため、同一のペアを忘れる（たとえあるとしても）
-            equal_text1_pos = None
+            equal_seq1_pos = None
 
         # ------------------------------------------------------------
 
-        # a[best_i] very similar to b[best_j]; equal_text1_pos is None iff they're not
+        # a[best_i] very similar to b[best_j]; equal_seq1_pos is None iff they're not
         # identical
-        # この時点ではtext1[best_i]とtext2[best_j]は最適なペア（同一であるか
+        # この時点ではseq1[best_i]とseq2[best_j]は最適なペア（同一であるか
         # もしくは非常に似ているペア）となっている
-        # 同一のペアである場合は、equal_text1_posはNoneではない
-        # 非常に似ているペアの場合は、equal_text1_posはNoneとなっている
+        # 同一のペアである場合は、equal_seq1_posはNoneではない
+        # 非常に似ているペアの場合は、equal_seq1_posはNoneとなっている
 
         # pump out diffs from before the synch point
         # 同期点（最適なペア）で区切った場合の前半に対して
         # 再帰的に同じ処理を行う（前半がなくなるまで続く）
-        for line in self._fancy_helper(text1, text1_low, best_i,
-                                       text2, text2_low, best_j):
+        for line in self._fancy_helper(seq1, seq1_low, best_i,
+                                       seq2, seq2_low, best_j):
             yield line
 
         # do intraline marking on the synch pair
-        # 最適なペアについて行内差分を取得する
-        text1_elt = text1[best_i]
-        text2_elt = text2[best_j]
+        # 最適なペアについてitem内差分を取得する
+        seq1_elt = seq1[best_i]
+        seq2_elt = seq2[best_j]
 
         # 非常に似ているペアの場合は（同一のペアでない場合は）
-        if equal_text1_pos is None:
+        if equal_seq1_pos is None:
             # pump out a '-', '?', '+', '?' quad for the synched lines
             # 同期する文字列に対して判定を行い、'!' '-' '+' ' ' を設定する
             #   * '!' : 変更
@@ -781,20 +781,20 @@ class Differ:
             #   * ' ' : 同一
             line_tags = ''
             # SequenceMatcherを使用して差分を取得する
-            cruncher.set_seqs(text1_elt, text2_elt)
+            cruncher.set_seqs(seq1_elt, seq2_elt)
 
             linediff_list = []
             # 差分をグループごとに取得
             for (tag,
-                 text1_i1, text1_i2,
-                 text2_j1, text2_j2) in cruncher.get_opcodes():
+                 seq1_i1, seq1_i2,
+                 seq2_j1, seq2_j2) in cruncher.get_opcodes():
 
                 # グループ内のそれぞれの文字数を記憶する
-                la = text1_i2 - text1_i1
-                lb = text2_j2 - text2_j1
+                la = seq1_i2 - seq1_i1
+                lb = seq2_j2 - seq2_j1
 
-                text1_elta = text1_elt[text1_i1:text1_i2]
-                text2_elta = text2_elt[text2_j1:text2_j2]
+                seq1_elta = seq1_elt[seq1_i1:seq1_i2]
+                seq2_elta = seq2_elt[seq2_j1:seq2_j2]
 
                 # 変更の場合
                 if   tag == 'replace':
@@ -805,32 +805,32 @@ class Differ:
                     # 　表示しない）
                     if self.cutoffchar:
                         # 個別に'-'および'+'で表示する
-                        linediff_list.append(('-', text1_elta, None))
-                        linediff_list.append(('+', None, text2_elta))
+                        linediff_list.append(('-', seq1_elta, None))
+                        linediff_list.append(('+', None, seq2_elta))
                     else:
                         # すべて同期して'!'で表示する
-                        linediff_list.append(('!', text1_elta, text2_elta))
+                        linediff_list.append(('!', seq1_elta, seq2_elta))
                 # 削除の場合
-                elif tag == 'delete': linediff_list.append(('-', text1_elta, None))
+                elif tag == 'delete': linediff_list.append(('-', seq1_elta, None))
                 # 追加の場合
-                elif tag == 'insert': linediff_list.append(('+', None, text2_elta))
+                elif tag == 'insert': linediff_list.append(('+', None, seq2_elta))
                 # 同一の場合
-                elif tag == 'equal': linediff_list.append((' ', text1_elta, text2_elta))
+                elif tag == 'equal': linediff_list.append((' ', seq1_elta, seq2_elta))
                 # その他のタグを受け取った場合は
                 else:
                     # 予定外なので例外を飛ばす
                     raise ValueError('unknown tag \'' + tag + '\'')
-            yield (('|', best_i, text1_elt, best_j, text2_elt), linediff_list)
+            yield (('|', best_i, seq1_elt, best_j, seq2_elt), linediff_list)
         else:
             # the synch pair is identical
             # ペアは同一
-            yield ((' ', best_i, text1_elt, best_j, text2_elt), None)
+            yield ((' ', best_i, seq1_elt, best_j, seq2_elt), None)
 
         # pump out diffs from after the synch point
         # 同期点（最適なペア）で区切った場合の後半に対して
         # 再帰的に同じ処理を行う（後半がなくなるまで続く）
-        for line in self._fancy_helper(text1, best_i+1, text1_high,
-                                       text2, best_j+1, text2_high):
+        for line in self._fancy_helper(seq1, best_i+1, seq1_high,
+                                       seq2, best_j+1, seq2_high):
             yield line
 
         return
@@ -838,31 +838,31 @@ class Differ:
     # _fancy_replace()内から分割点の前半と後半の2回再帰的に
     # 呼び出される際に使用される関数
     def _fancy_helper(self,
-                      text1, text1_low, text1_high,
-                      text2, text2_low, text2_high):
+                      seq1, seq1_low, seq1_high,
+                      seq2, seq2_low, seq2_high):
         g = []
-        # text1が存在する
-        if text1_low < text1_high:
-            # text2が存在する
-            if text2_low < text2_high:
-                # text1とtext2が両方存在するので
+        # seq1が存在する
+        if seq1_low < seq1_high:
+            # seq2が存在する
+            if seq2_low < seq2_high:
+                # seq1とseq2が両方存在するので
                 # _fancy_replace()を再帰的に呼び出す
-                g = self._fancy_replace(text1, text1_low, text1_high,
-                                        text2, text2_low, text2_high)
+                g = self._fancy_replace(seq1, seq1_low, seq1_high,
+                                        seq2, seq2_low, seq2_high)
                 # イテレータが返るのでそのままyieldする
                 for line in g:
                     yield line
             else:
-                # text1が存在してtext2が無いので、
-                # text1について'<'で返す
-                for num1 in range(text1_low, text1_high):
-                    yield (('<', num1, text1[num1], None, None), None)
-        # text2が存在する
-        elif text2_low < text2_high:
-            # text2が存在してtext1が無いので、
-            # text2について'>'で返す
-            for num2 in range(text2_low, text2_high):
-                yield (('>', None, None, num2, text2[num2]), None)
+                # seq1が存在してseq2が無いので、
+                # seq1について'<'で返す
+                for num1 in range(seq1_low, seq1_high):
+                    yield (('<', num1, seq1[num1], None, None), None)
+        # seq2が存在する
+        elif seq2_low < seq2_high:
+            # seq2が存在してseq1が無いので、
+            # seq2について'>'で返す
+            for num2 in range(seq2_low, seq2_high):
+                yield (('>', None, None, num2, seq2[num2]), None)
         return
 
     @staticmethod

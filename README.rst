@@ -134,75 +134,38 @@ License
 Module interface
 ================
 
-Compare two text files or directories; generate the resulting delta.
+Compare two text files or directories (or sequences); generate the differences.
 
 **class uxdiff.Differ(linejunk=None, charjunk=None, cutoff=0.75, fuzzy=0.0, cutoffchar=False, context=3)**
 
    Bases: ``object``
 
-   Differ is a class for comparing sequences of lines of text, and
-   producing human-readable differences or deltas.
+   Differ is a class for comparing sequences.
 
-   Differ uses SequenceMatcher both to compare sequences of lines,
-   and to compare sequences of characters within similar (near-matching) lines.
-
-   Example:
-
-   >>> text1 = '''  1. Beautiful is better than ugly.
-   ...   2. Explicit is better than implicit.
-   ...   3. Simple is better than complex.
-   ...   4. Complex is better than complicated.
-   ... '''.splitlines(1)
-   >>>
-   >>> text2 = '''  1. Beautiful is better than ugly.
-   ...   3.   Simple is better than complex.
-   ...   4. Complicated is better than complex.
-   ...   5. Flat is better than nested.
-   ... '''.splitlines(1)
-   >>>
-   >>> d = Differ()
-   >>>
-   >>> result = list(d.compare(text1, text2))
-   >>>
-   >>> import pprint
-   >>> pprint.pprint(result, width=120)
-   [True,
-    ((' ', 0, '  1. Beautiful is better than ugly.\n', 0, '  1. Beautiful is better than ugly.\n'), None),
-    False,
-    True,
-    (('<', 1, '  2. Explicit is better than implicit.\n', None, None), None),
-    (('|', 2, '  3. Simple is better than complex.\n', 1, '  3.   Simple is better than complex.\n'),
-     [(' ', '  3.', '  3.'),
-      ('+', None, '  '),
-      (' ', ' Simple is better than complex.\n', ' Simple is better than complex.\n')]),
-    (('|', 3, '  4. Complex is better than complicated.\n', 2, '  4. Complicated is better than complex.\n'),
-     [(' ', '  4. Compl', '  4. Compl'),
-      ('+', None, 'icat'),
-      (' ', 'e', 'e'),
-      ('!', 'x', 'd'),
-      (' ', ' is better than compl', ' is better than compl'),
-      ('-', 'icat', None),
-      (' ', 'e', 'e'),
-      ('!', 'd', 'x'),
-      (' ', '.\n', '.\n')]),
-    (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
-    False,
-    None]
+   Differ uses SequenceMatcher both to compare sequences.
 
    **begin_textdiffs()**
 
-   **compare(text1, text2)**
+   **compare(seq1, seq2)**
 
-      Compare two sequences of lines; generate the resulting delta.
+      Compare two sequences; return a generator of differences.
+
+      Requirement is
+
+      * both arguments are iterable.
+
+      * items in a sequences must be hashable.
+
+      If the items of a sequences are iterable, detect similar ones as needed.
 
       Example:
 
       >>> import pprint
       >>>
       >>> pprint.pprint(list(Differ().compare([
-      ... 1, 2, 3, (4, 5), 6, 7, 8
+      ...    1, 2, 3, (4, 5), 6, 7, 8
       ... ], [
-      ... 1, 2, 33, 4, 5, 6, 7, 8
+      ...    1, 2, 33, 4, 5, 6, 7, 8
       ... ])))
       [True,
        ((' ', 0, 1, 0, 1), None),
@@ -247,6 +210,43 @@ Compare two text files or directories; generate the resulting delta.
        (('|', 1, 'two\n', 1, 'tree\n'), [(' ', 't', 't'), ('!', 'wo', 'ree'), (' ', '\n', '\n')]),
        (('|', 2, 'three\n', 2, 'emu\n'),
         [('-', 'thr', None), (' ', 'e', 'e'), ('!', 'e', 'mu'), (' ', '\n', '\n')]),
+       False,
+       None]
+      >>>
+      >>> text1 = '''  1. Beautiful is better than ugly.
+      ...   2. Explicit is better than implicit.
+      ...   3. Simple is better than complex.
+      ...   4. Complex is better than complicated.
+      ... '''.splitlines(1)
+      >>>
+      >>> text2 = '''  1. Beautiful is better than ugly.
+      ...   3.   Simple is better than complex.
+      ...   4. Complicated is better than complex.
+      ...   5. Flat is better than nested.
+      ... '''.splitlines(1)
+      >>>
+      >>> diff = Differ().compare(text1, text2)
+      >>> pprint.pprint(list(diff), width=120)
+      [True,
+       ((' ', 0, '  1. Beautiful is better than ugly.\n', 0, '  1. Beautiful is better than ugly.\n'), None),
+       False,
+       True,
+       (('<', 1, '  2. Explicit is better than implicit.\n', None, None), None),
+       (('|', 2, '  3. Simple is better than complex.\n', 1, '  3.   Simple is better than complex.\n'),
+        [(' ', '  3.', '  3.'),
+         ('+', None, '  '),
+         (' ', ' Simple is better than complex.\n', ' Simple is better than complex.\n')]),
+       (('|', 3, '  4. Complex is better than complicated.\n', 2, '  4. Complicated is better than complex.\n'),
+        [(' ', '  4. Compl', '  4. Compl'),
+         ('+', None, 'icat'),
+         (' ', 'e', 'e'),
+         ('!', 'x', 'd'),
+         (' ', ' is better than compl', ' is better than compl'),
+         ('-', 'icat', None),
+         (' ', 'e', 'e'),
+         ('!', 'd', 'x'),
+         (' ', '.\n', '.\n')]),
+       (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
        False,
        None]
 
