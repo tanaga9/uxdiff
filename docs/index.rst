@@ -99,8 +99,7 @@ License
 
 Module interface
 ==================================
-
-.. automodule:: uxdiff
-   :members:
-   :undoc-members:
-   :show-inheritance:
+..
+   .. automodule:: uxdiff
+.. autoclass:: uxdiff.Differ
+   :members: compare
