@@ -152,11 +152,22 @@ Compare two text files or directories (or sequences); generate the differences.
 
       Requirement is
 
-      * both arguments are iterable.
+      * both sequences must be iterable.
 
-      * items in a sequences must be hashable.
+      * items in a sequence must be (recursively) hashable.
 
       If the items of a sequences are iterable, detect similar ones as needed.
+
+      * Examples of hashable and iterable object
+           * string
+
+           * bytes
+
+           * frozenset
+
+           * tuple (only contains hashable)
+
+           * …
 
       Example:
 
