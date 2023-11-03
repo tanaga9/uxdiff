@@ -67,7 +67,7 @@ compare
 
 supported multi-byte string. set the encoding with an argument if you need.
 
-See more `examples <docs/example.ipynb>`_
+See more `examples <https://github.com/tanaga9/uxdiff/blob/master/docs/example.ipynb>`_
 
 
 Usage

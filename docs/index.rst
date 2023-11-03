@@ -44,7 +44,7 @@ supported multi-byte string. set the encoding with an argument if you need.
 
 See more examples_
 
-.. _examples: docs/example.ipynb
+.. _examples: https://github.com/tanaga9/uxdiff/blob/master/docs/example.ipynb
 
 
 Usage
