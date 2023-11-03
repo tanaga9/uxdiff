@@ -47,9 +47,9 @@ import itertools
 try:   itertools.filterfalse # python3.x
 except(AttributeError):
     itertools.filterfalse = itertools.ifilterfalse # python2.x
+    itertools.zip_longest = itertools.izip_longest
 
 import functools
-import itertools
 
 BUFSIZE = 8*1024
 
@@ -351,11 +351,13 @@ class Differ:
 
         If the items of a sequences are iterable, detect similar ones as needed.
 
-        * Examples of hashable and iterable object
+        * Examples of hashable and iterable object (containing only hashable objects)
             * string
             * bytes
+            * tuple
+            * namedtuple
             * frozenset
-            * tuple (only contains hashable)
+            * frozendict
             * ...
 
 

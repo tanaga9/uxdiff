@@ -158,14 +158,18 @@ Compare two text files or directories (or sequences); generate the differences.
 
       If the items of a sequences are iterable, detect similar ones as needed.
 
-      * Examples of hashable and iterable object
+      * Examples of hashable and iterable object (containing only hashable objects)
            * string
 
            * bytes
 
+           * tuple
+
+           * namedtuple
+
            * frozenset
 
-           * tuple (only contains hashable)
+           * frozendict
 
            * …
 
