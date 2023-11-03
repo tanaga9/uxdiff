@@ -381,8 +381,7 @@ class Differ:
          ((' ', 4, 6, 5, 6), None),
          ((' ', 5, 7, 6, 7), None),
          ((' ', 6, 8, 7, 8), None),
-         False,
-         None]
+         False]
         >>>
         >>> text1 = '''one
         ... two
@@ -401,8 +400,7 @@ class Differ:
          (('<', 1, 'two\n', None, None), None),
          (('|', 2, 'three\n', 1, 'tree\n'), [(' ', 't', 't'), ('-', 'h', None), (' ', 'ree\n', 'ree\n')]),
          (('>', None, None, 2, 'emu\n'), None),
-         False,
-         None]
+         False]
         >>>
         >>> # like sdiff
         >>> pprint.pprint(list(Differ(cutoff=0, fuzzy=1).compare(text1, text2)), width=100)
@@ -411,8 +409,7 @@ class Differ:
          (('|', 1, 'two\n', 1, 'tree\n'), [(' ', 't', 't'), ('!', 'wo', 'ree'), (' ', '\n', '\n')]),
          (('|', 2, 'three\n', 2, 'emu\n'),
           [('-', 'thr', None), (' ', 'e', 'e'), ('!', 'e', 'mu'), (' ', '\n', '\n')]),
-         False,
-         None]
+         False]
         >>>
         >>> text1 = '''  1. Beautiful is better than ugly.
         ...   2. Explicit is better than implicit.
@@ -448,8 +445,7 @@ class Differ:
            ('!', 'd', 'x'),
            (' ', '.\n', '.\n')]),
          (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
-         False,
-         None]
+         False]
          
         +------------+--------------------------------------------------------------------------------------------+
         | Yields     | Meaning                                                                                    |
@@ -458,7 +454,7 @@ class Differ:
         +------------+--------------------------------------------------------------------------------------------+
         | False      | end of a group of diff                                                                     |
         +------------+--------------------------------------------------------------------------------------------+
-        | None       | context separator                                                                          |
+        | None       | omitted matches beyond the number of contexts                                              |
         +------------+--------------------------------------------------------------------------------------------+
         | Tuple      | ((Code, Index1 | None, Item1 | None, Index2 | None, Item2 | None), InlineDiff | None)      |
         +------------+--------------------------------------------------------------------------------------------+
@@ -509,12 +505,18 @@ class Differ:
             # 合わせるために呼び出した後1枚リストをかぶせる
             opcodes = [cruncher.get_opcodes()]
 
+        max_seq1_high = 0
+        max_seq2_high = 0
         # 差分の纏まりのグループごとにループする
-        for opcode in opcodes:
+        for i, opcode in enumerate(opcodes):
             # 差分の纏まりごとにループする
-            for (tag,
+            for h, (tag,
                  seq1_low, seq1_high,
-                 seq2_low, seq2_high) in opcode:
+                 seq2_low, seq2_high) in enumerate(opcode):
+                max_seq1_high = max(max_seq1_high, seq1_high)
+                max_seq2_high = max(max_seq2_high, seq2_high)
+                if i == 0 and h == 0 and (seq1_low > 0 or seq2_low > 0):
+                    yield None
                 yield True
                 # タグが変更の場合は
                 if   tag == 'replace':
@@ -574,7 +576,8 @@ class Differ:
 
                 yield False
             # コンテキストの終わりをあらわすNoneを返す
-            yield None
+            if self.context != None and (max_seq1_high < len(seq1) or max_seq2_high < len(seq2)):
+                yield None
         return
 
     # 1ブロックの線をもう一つと入れ替えるとき、
@@ -927,6 +930,9 @@ class Differ:
 
                 for textdiff in self.textdiffs():
                     yield textdiff
+        else:
+            for textlinediff in self.textlinediffs():
+                yield textlinediff
 
     def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
         raise NotImplementedError()
@@ -1304,7 +1310,7 @@ class UniLikeDiffer(SidebysideDiffer):
 def tabulate(diffs):
     r"""
     Output the detected difference as an HTML table (for Jupyter).
-    
+
     """
 
     class JupyterHTMLStr(str):

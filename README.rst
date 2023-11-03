@@ -191,8 +191,7 @@ Compare two text files or directories (or sequences); generate the differences.
        ((' ', 4, 6, 5, 6), None),
        ((' ', 5, 7, 6, 7), None),
        ((' ', 6, 8, 7, 8), None),
-       False,
-       None]
+       False]
       >>>
       >>> text1 = '''one
       ... two
@@ -211,8 +210,7 @@ Compare two text files or directories (or sequences); generate the differences.
        (('<', 1, 'two\n', None, None), None),
        (('|', 2, 'three\n', 1, 'tree\n'), [(' ', 't', 't'), ('-', 'h', None), (' ', 'ree\n', 'ree\n')]),
        (('>', None, None, 2, 'emu\n'), None),
-       False,
-       None]
+       False]
       >>>
       >>> # like sdiff
       >>> pprint.pprint(list(Differ(cutoff=0, fuzzy=1).compare(text1, text2)), width=100)
@@ -221,8 +219,7 @@ Compare two text files or directories (or sequences); generate the differences.
        (('|', 1, 'two\n', 1, 'tree\n'), [(' ', 't', 't'), ('!', 'wo', 'ree'), (' ', '\n', '\n')]),
        (('|', 2, 'three\n', 2, 'emu\n'),
         [('-', 'thr', None), (' ', 'e', 'e'), ('!', 'e', 'mu'), (' ', '\n', '\n')]),
-       False,
-       None]
+       False]
       >>>
       >>> text1 = '''  1. Beautiful is better than ugly.
       ...   2. Explicit is better than implicit.
@@ -258,8 +255,7 @@ Compare two text files or directories (or sequences); generate the differences.
          ('!', 'd', 'x'),
          (' ', '.\n', '.\n')]),
        (('>', None, None, 3, '  5. Flat is better than nested.\n'), None),
-       False,
-       None]
+       False]
 
       +--------------+----------------------------------------------------------------------------------------------+
       | Yields       | Meaning                                                                                      |
@@ -268,7 +264,7 @@ Compare two text files or directories (or sequences); generate the differences.
       +--------------+----------------------------------------------------------------------------------------------+
       | False        | end of a group of diff                                                                       |
       +--------------+----------------------------------------------------------------------------------------------+
-      | None         | context separator                                                                            |
+      | None         | omitted matches beyond the number of contexts                                                |
       +--------------+----------------------------------------------------------------------------------------------+
       | Tuple        | ((Code, Index1 | None, Item1 | None, Index2 | None, Item2 | None), InlineDiff | None)        |
       +--------------+----------------------------------------------------------------------------------------------+
