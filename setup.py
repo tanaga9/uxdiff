@@ -16,8 +16,7 @@ META_INFO = {
     'keywords'    : 'colored side-by-side diff',
     'description' : ('As a command, Compare two text files or directories. '
                      'Improve text comparison in GUI-less environments. '
-                     'Also, as a module, Compare and output a list of differences '
-                     'between any two sequences of hashable objects.')
+                     'As a module, Compare two sequences of hashable objects.')
 }
 
 if sys.hexversion < 0x02070000:
