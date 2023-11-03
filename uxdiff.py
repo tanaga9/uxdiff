@@ -1307,7 +1307,7 @@ class UniLikeDiffer(SidebysideDiffer):
                 yield line
         self.array_textdiffs_delay = []
 
-def tabulate(diffs):
+def tabulate(diffs, truncate=None):
     r"""
     Output the detected difference as an HTML table (for Jupyter).
 
@@ -1319,6 +1319,7 @@ def tabulate(diffs):
         def str(self): return self
     escape = (lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
               if s is not None else '')
+    trunc = (lambda s, maxlen: s[:maxlen]+'...' if len(s) > maxlen else s)
     syltpl = 'text-align: start; background: {};'
     sylsep = ' style=" background: #f5f7f8;"'
     html = '''<table style="background: #f5f7f8; color: #000; width=100%; overflow-wrap: anywhere; text-align: start">
@@ -1368,6 +1369,7 @@ def tabulate(diffs):
                 (icode, slice1, slice2) = idiff
                 bgc = bgc1 = bgcn1 = bgc2 = bgcn2 = '#fff'
                 syladd = syladd1 = syladd2 = ""
+                efunc = escape
                 if icode == '-':
                     bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ffd7d5', '#ffebe9', '#ffd7d5', '#f5f7f8', '#f5f7f8')
                     syladd += 'font-weight: bold; color: #700;'
@@ -1381,6 +1383,8 @@ def tabulate(diffs):
                     syladd += 'font-weight: bold; color: #330;'
                     syladd1 += 'font-weight: bold; color: #700;'
                     syladd2 += 'font-weight: bold; color: #040;'
+                if icode == ' ' and truncate is not None:
+                    efunc = lambda s: trunc(escape(s).strip(), int(truncate))
                 syl = ' style="' + syltpl.format(bgc) + syladd + '"'
                 syl1 = ' style="' + syltpl.format(bgc1) + syladd1 + '"'
                 syl2 = ' style="' + syltpl.format(bgc2) + syladd2 + '"'
@@ -1391,9 +1395,9 @@ def tabulate(diffs):
                     '<tr style="color: #000;">',
                     sylsep, "",
                     syln1, sic(si1, len(slice1)) if slice1 is not None else '',
-                    syl1, escape(slice1),
+                    syl1, efunc(slice1),
                     syl, escape(icode),
-                    syl2, escape(slice2),
+                    syl2, efunc(slice2),
                     syln2, sic(si2, len(slice2)) if slice2 is not None else '',
                 )
                 si1 += len(slice1) if slice1 is not None else 0

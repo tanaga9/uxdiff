@@ -136,7 +136,7 @@ Module interface
 
 Compare two text files or directories (or sequences); generate the differences.
 
-**uxdiff.tabulate(diffs)**
+**uxdiff.tabulate(diffs, truncate=None)**
 
    Output the detected difference as an HTML table (for Jupyter).
 
