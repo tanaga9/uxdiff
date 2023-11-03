@@ -25,11 +25,11 @@ Example
 
 text1.txt
 
-.. program-output:: cat ../examples/text1.txt
+.. program-output:: cat text1.txt
 
 text2.txt
 
-.. program-output:: cat ../examples/text2.txt
+.. program-output:: cat text2.txt
 
 compare
 
@@ -37,13 +37,13 @@ compare
 
    uxdiff text1.txt text2.txt --color never
 
-.. program-output:: sh -c "cd ../examples && uxdiff text1.txt text2.txt --color never"
+.. program-output:: uxdiff text1.txt text2.txt --color never
 
 supported multi-byte string. set the encoding with an argument if you need.
 
 See more examples_
 
-.. _examples: examples
+.. _examples: docs/example.ipynb
 
 
 Usage
@@ -55,16 +55,6 @@ License
 --------------------
 
 `The MIT License (MIT) <http://www.opensource.org/licenses/mit-license.php>`_
-
-
-..
-   Command-line interface
-   ==================================
-   
-   .. argparse::
-      :module: uxdiff
-      :func: make_argparser
-      :prog: uxdiff
 
 
 Module interface

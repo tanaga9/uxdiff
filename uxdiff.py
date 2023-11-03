@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #from __future__ import print_function
@@ -1317,8 +1317,8 @@ def tabulate(diffs, truncate=None):
         def _repr_html_(self): return self
         @property
         def str(self): return self
-    escape = (lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-              if s is not None else '')
+    escape = (lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    nonetoe = (lambda s: s if s is not None else '')
     trunc = (lambda s, maxlen: s[:maxlen]+'...' if len(s) > maxlen else s)
     syltpl = 'text-align: start; background: {};'
     sylsep = ' style=" background: #f5f7f8;"'
@@ -1339,15 +1339,22 @@ def tabulate(diffs, truncate=None):
         bgc = bgc1 = bgcn1 = bgc2 = bgcn2 = '#fff'
         syladd = syladd1 = syladd2 = ""
         if code == '<':
+            idx2, seq2 = nonetoe(idx2), nonetoe(seq2)
             bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ffd7d5', '#ffebe9', '#ffd7d5', '#f5f7f8', '#f5f7f8')
             syladd += 'font-weight: bold; color: #700;'
             syladd1 += 'font-weight: bold; color: #700;'
         if code == '>':
+            idx1, seq1 = nonetoe(idx1), nonetoe(seq1)
             bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ccffd8', '#f5f7f8', '#f5f7f8', '#e6ffec', '#ccffd8')
             syladd += 'font-weight: bold; color: #040;'
             syladd2 += 'font-weight: bold; color: #040;'
         if code == '|':
-            bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#f2e8ab', '#ffebe9', '#ffebe9', '#e6ffec', '#e6ffec')
+            if idiffs is None:
+                bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#f2e8ab', '#ffebe9', '#ffd7d5', '#e6ffec', '#ccffd8')
+                syladd1 += 'font-weight: bold; color: #700;'
+                syladd2 += 'font-weight: bold; color: #040;'
+            else:
+                bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#f2e8ab', '#ffebe9', '#ffebe9', '#e6ffec', '#e6ffec')
             syladd += 'font-weight: bold; color: #330;'
         syl = ' style="' + syltpl.format(bgc) + syladd + '"'
         syl1 = ' style="' + syltpl.format(bgc1) + syladd1 + '"'
@@ -1371,10 +1378,12 @@ def tabulate(diffs, truncate=None):
                 syladd = syladd1 = syladd2 = ""
                 efunc = escape
                 if icode == '-':
+                    slice2 = nonetoe(slice2)
                     bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ffd7d5', '#ffebe9', '#ffd7d5', '#f5f7f8', '#f5f7f8')
                     syladd += 'font-weight: bold; color: #700;'
                     syladd1 += 'font-weight: bold; color: #700;'
                 if icode == '+':
+                    slice1 = nonetoe(slice1)
                     bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ccffd8', '#f5f7f8', '#f5f7f8', '#e6ffec', '#ccffd8')
                     syladd += 'font-weight: bold; color: #040;'
                     syladd2 += 'font-weight: bold; color: #040;'

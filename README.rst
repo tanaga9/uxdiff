@@ -66,7 +66,7 @@ compare
 
 supported multi-byte string. set the encoding with an argument if you need.
 
-See more `examples <examples>`_
+See more `examples <docs/example.ipynb>`_
 
 
 Usage

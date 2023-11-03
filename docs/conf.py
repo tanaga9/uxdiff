@@ -29,7 +29,6 @@ html_static_path = ['_static']
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
-    "sphinxarg.ext",
     "sphinx_rst_builder",
     'sphinxcontrib.programoutput',
 ]
