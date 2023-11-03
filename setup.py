@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from distutils.core import setup
+from setuptools import setup
 
 __author__ =  'Tanaga'
 __version__=  '1.5.0'
@@ -21,6 +21,10 @@ META_INFO = {
 if sys.hexversion < 0x02070000:
     raise SystemExit("*** Requires python >= 2.7.0")
 
+def load_readme() -> str:
+    with open('README.rst') as fin:
+        return fin.read()
+
 setup(
     name='uxdiff',
     version=META_INFO['version'],
@@ -28,6 +32,8 @@ setup(
     author_email=META_INFO['email'].replace('(', '').replace(')', ''),
     license=META_INFO['license'],
     description=META_INFO['description'],
+    long_description=load_readme(),
+    long_description_content_type='text/x-rst',
     keywords=META_INFO['keywords'],
     url=META_INFO['url'],
     py_modules=['uxdiff'],
