@@ -15,7 +15,6 @@ META_INFO = {
     'url'         : 'https://github.com/tanaga9/uxdiff',
     'keywords'    : 'colored side-by-side diff',
     'description' : ('As a command, Compare two text files or directories. '
-                     'Improve text comparison in GUI-less environments. '
                      'As a module, Compare two sequences of hashable objects.')
 }
 

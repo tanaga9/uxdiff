@@ -2,7 +2,8 @@
 uxdiff
 ******
 
-Compares the two sequences well and outputs the difference
+Compares the two sequences well and outputs the difference.
+Improves text comparison in GUI-less environments.
 
 
 Overview
