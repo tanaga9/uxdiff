@@ -5,7 +5,7 @@ uxdiff
 Compares the two sequences well and outputs the difference
 
 
-overview
+Overview
 ========
 
 
@@ -22,21 +22,21 @@ Example
 
 text1.txt
 
-::
+.. code-block:: text
 
-   1. Beautiful is better than ugly.
-   2. Explicit is better than implicit.
-   3. Simple is better than complex.
-   4. Complex is better than complicated.
+     1. Beautiful is better than ugly.
+     2. Explicit is better than implicit.
+     3. Simple is better than complex.
+     4. Complex is better than complicated.
 
 text2.txt
 
-::
+.. code-block:: text
 
-   1. Beautiful is better than ugly.
-   2.   Simple is better than complex.
-   3. Complicated is better than complex.
-   4. Flat is better than nested.
+     1. Beautiful is better than ugly.
+     3.   Simple is better than complex.
+     4. Complicated is better than complex.
+     5. Flat is better than nested.
 
 compare
 
@@ -44,7 +44,7 @@ compare
 
    uxdiff text1.txt text2.txt --color never
 
-::
+.. code-block:: text
 
    --- text1.txt (utf-8)
    +++ text2.txt (utf-8)
@@ -56,12 +56,12 @@ compare
                3| +   4. Complicated is better than complex.
                4| +   5. Flat is better than nested.
 
-   [     ]      |    ++
-   [ <-  ]     3|  3.   Simple is better than complex.
-   [  -> ]     2|  3.   Simple is better than complex.
+   [     ]      |    ++                                
+   [ <-  ]     3|  3.   Simple is better than complex. 
+   [  -> ]     2|  3.   Simple is better than complex. 
 
-   [     ]      |          ++++ !                     ---- !
-   [ <-  ]     4|  4. Compl    ex is better than complicated.
+   [     ]      |          ++++ !                     ---- !  
+   [ <-  ]     4|  4. Compl    ex is better than complicated. 
    [  -> ]     3|  4. Complicated is better than compl    ex.
 
 supported multi-byte string. set the encoding with an argument if you need.
@@ -133,6 +133,12 @@ License
 
 Module interface
 ================
+
+Compare two text files or directories (or sequences); generate the differences.
+
+**uxdiff.tabulate(diffs)**
+
+   Output the detected difference as an HTML table (for Jupyter).
 
 **class uxdiff.Differ(linejunk=None, charjunk=None, cutoff=0.75, fuzzy=0.0, cutoffchar=False, context=3)**
 
@@ -264,7 +270,7 @@ Module interface
       +--------------+----------------------------------------------------------------------------------------------+
       | None         | context separator                                                                            |
       +--------------+----------------------------------------------------------------------------------------------+
-      | Tuple        | ((Code, LineNum1 | None, Line1 | None, LineNum2 | None, Line2 | None),  InlineDiff | None)   |
+      | Tuple        | ((Code, Index1 | None, Item1 | None, Index2 | None, Item2 | None), InlineDiff | None)        |
       +--------------+----------------------------------------------------------------------------------------------+
 
       +--------------+--------------------------------------+
@@ -279,13 +285,13 @@ Module interface
       | “|”          | different to both sequences          |
       +--------------+--------------------------------------+
 
-      +--------------+----------------------------------------------------------------+
-      | InlineDiff   | Meaning                                                        |
-      +==============+================================================================+
-      | None         | There is no InlineDiff (Code is not “|”)                       |
-      +--------------+----------------------------------------------------------------+
-      | List         | [(InlineCode, InlineItem1 | None, InlineItem2 | None), … ]     |
-      +--------------+----------------------------------------------------------------+
+      +--------------+----------------------------------------------------------------------+
+      | InlineDiff   | Meaning                                                              |
+      +==============+======================================================================+
+      | None         | There is no InlineDiff (Code is not “|” or items are not iterable)   |
+      +--------------+----------------------------------------------------------------------+
+      | List         | [(InlineCode, SlicedItem1 | None, SlicedItem2 | None), … ]           |
+      +--------------+----------------------------------------------------------------------+
 
       +--------------+--------------------------------------------------------+
       | InlineCode   | Meaning                                                |

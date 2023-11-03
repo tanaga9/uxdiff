@@ -33,7 +33,6 @@ __version__=  '1.4.5'
 #
 
 import sys, difflib, argparse, unicodedata, re, codecs
-import unidiff
 # import pprint, pdb
 
 if sys.hexversion < 0x02070000:
@@ -461,7 +460,7 @@ class Differ:
         +------------+--------------------------------------------------------------------------------------------+
         | None       | context separator                                                                          |
         +------------+--------------------------------------------------------------------------------------------+
-        | Tuple      | ((Code, LineNum1 | None, Line1 | None, LineNum2 | None, Line2 | None),  InlineDiff | None) |
+        | Tuple      | ((Code, Index1 | None, Item1 | None, Index2 | None, Item2 | None), InlineDiff | None)      |
         +------------+--------------------------------------------------------------------------------------------+
 
         +------------+------------------------------------+
@@ -476,13 +475,13 @@ class Differ:
         | "|"        | different to both sequences        |
         +------------+------------------------------------+
 
-        +------------+--------------------------------------------------------------+
-        | InlineDiff | Meaning                                                      |
-        +============+==============================================================+
-        | None       | There is no InlineDiff (Code is not "|")                     |
-        +------------+--------------------------------------------------------------+
-        | List       | [(InlineCode, InlineItem1 | None, InlineItem2 | None), ... ] |
-        +------------+--------------------------------------------------------------+
+        +------------+--------------------------------------------------------------------+
+        | InlineDiff | Meaning                                                            |
+        +============+====================================================================+
+        | None       | There is no InlineDiff (Code is not "|" or items are not iterable) |
+        +------------+--------------------------------------------------------------------+
+        | List       | [(InlineCode, SlicedItem1 | None, SlicedItem2 | None), ... ]       |
+        +------------+--------------------------------------------------------------------+
 
         +------------+------------------------------------------------------+
         | InlineCode | Meaning                                              |
@@ -1302,6 +1301,104 @@ class UniLikeDiffer(SidebysideDiffer):
                 yield line
         self.array_textdiffs_delay = []
 
+def tabulate(diffs):
+    r"""
+    Output the detected difference as an HTML table (for Jupyter).
+    
+    """
+
+    class JupyterHTMLStr(str):
+        def _repr_html_(self): return self
+        @property
+        def str(self): return self
+    escape = (lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+              if s is not None else '')
+    syltpl = 'text-align: start; background: {};'
+    sylsep = ' style=" background: #f5f7f8;"'
+    html = '''<table style="background: #f5f7f8; color: #000; width=100%; overflow-wrap: anywhere; text-align: start">
+    <thead><tr><th>idx1</th><th>seq1</th><th></th><th>seq2</th><th>idx2</th><th></th>
+    <th></th><th>slice1</th><th></th><th>slice2</th><th></th></tr></thead><tbody>'''
+    for i, diff in enumerate(diffs):
+        if diff is True:
+            html += '<tr><td colspan="11"></td></tr>'
+            continue
+        if diff is False:
+            html += '<tr><td colspan="11"></td></tr>'
+            continue
+        if diff is None:
+            html += '<tr><td colspan="11" style="text-align: center; background: #E0F4FE;">...</td></tr>'
+            continue
+        ((code, idx1, seq1, idx2, seq2), idiffs) = diff
+        bgc = bgc1 = bgcn1 = bgc2 = bgcn2 = '#fff'
+        syladd = syladd1 = syladd2 = ""
+        if code == '<':
+            bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ffd7d5', '#ffebe9', '#ffd7d5', '#f5f7f8', '#f5f7f8')
+            syladd += 'font-weight: bold; color: #700;'
+            syladd1 += 'font-weight: bold; color: #700;'
+        if code == '>':
+            bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ccffd8', '#f5f7f8', '#f5f7f8', '#e6ffec', '#ccffd8')
+            syladd += 'font-weight: bold; color: #040;'
+            syladd2 += 'font-weight: bold; color: #040;'
+        if code == '|':
+            bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#f2e8ab', '#ffebe9', '#ffebe9', '#e6ffec', '#e6ffec')
+            syladd += 'font-weight: bold; color: #330;'
+        syl = ' style="' + syltpl.format(bgc) + syladd + '"'
+        syl1 = ' style="' + syltpl.format(bgc1) + syladd1 + '"'
+        syl2 = ' style="' + syltpl.format(bgc2) + syladd2 + '"'
+        syln1 = ' style="' + syltpl.format(bgcn1) + '"'
+        syln2 = ' style="' + syltpl.format(bgcn2) + '"'
+        cls = ' class="even"' if i%2 == 0 else 'class="odd"'
+        rs = ' rowspan="{}"'.format(len(idiffs)+2) if idiffs is not None else ''
+        html += ('<tr style="color: #000;'
+                 'border-bottom: 1px solid #ddd; border-top: 1px solid #ddd; border-collapse: collapse;">'
+                 '<td {}>{}</td><td {}>{}</td><td {}>{}</td><td {}>{}</td><td {}>{}</td>'.format(
+                     cls+rs+syln1, escape(idx1), cls+rs+syl1, escape(seq1),
+                     cls+rs+syl, escape(code),
+                     cls+rs+syl2, escape(seq2), cls+rs+syln2, escape(idx2), ))
+        if idiffs is not None:
+            html += '<td {}></td></tr>'.format(sylsep)
+            si1 = si2 = 0
+            for h, idiff in enumerate(idiffs):
+                (icode, slice1, slice2) = idiff
+                bgc = bgc1 = bgcn1 = bgc2 = bgcn2 = '#fff'
+                syladd = syladd1 = syladd2 = ""
+                if icode == '-':
+                    bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ffd7d5', '#ffebe9', '#ffd7d5', '#f5f7f8', '#f5f7f8')
+                    syladd += 'font-weight: bold; color: #700;'
+                    syladd1 += 'font-weight: bold; color: #700;'
+                if icode == '+':
+                    bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#ccffd8', '#f5f7f8', '#f5f7f8', '#e6ffec', '#ccffd8')
+                    syladd += 'font-weight: bold; color: #040;'
+                    syladd2 += 'font-weight: bold; color: #040;'
+                if icode == '!':
+                    bgc, bgcn1, bgc1, bgcn2, bgc2 = ('#f2e8ab', '#ffebe9', '#ffd7d5', '#e6ffec', '#ccffd8')
+                    syladd += 'font-weight: bold; color: #330;'
+                    syladd1 += 'font-weight: bold; color: #700;'
+                    syladd2 += 'font-weight: bold; color: #040;'
+                syl = ' style="' + syltpl.format(bgc) + syladd + '"'
+                syl1 = ' style="' + syltpl.format(bgc1) + syladd1 + '"'
+                syl2 = ' style="' + syltpl.format(bgc2) + syladd2 + '"'
+                syln1 = ' style="' + syltpl.format(bgcn1) + '"'
+                syln2 = ' style="' + syltpl.format(bgcn2) + '"'
+                sic = lambda si, size: '{}'.format(si) if size == 1 else '{}:{}'.format(si, si+size)
+                html += '{}<td {}>{}<td {}>{}<td {}>{}</td><td {}>{}</td><td {}>{}</td><td {}>{}</td></tr>'.format(
+                    '<tr style="color: #000;">',
+                    sylsep, "",
+                    syln1, sic(si1, len(slice1)) if slice1 is not None else '',
+                    syl1, escape(slice1),
+                    syl, escape(icode),
+                    syl2, escape(slice2),
+                    syln2, sic(si2, len(slice2)) if slice2 is not None else '',
+                )
+                si1 += len(slice1) if slice1 is not None else 0
+                si2 += len(slice2) if slice2 is not None else 0
+            html += '<tr><td {}></td></tr>'.format(sylsep)
+        else:
+            html += '<td {}></td></tr>'.format(sylsep)
+    html += '</tbody></table>'
+    return JupyterHTMLStr(html)
+
+
 # filecmp.dircmp (ext_dircmp)
 #  |-- left_list           [files or dirs]
 #  | |-- left_only         [files or dirs]
@@ -1748,7 +1845,7 @@ def parse_unidiff(diff):
     ['hogee', 'bar', 'foo']
     >>>
     """
-
+    import unidiff
     patches = unidiff.PatchSet(diff)  # , encoding=encoding)
     for patch in patches:
         

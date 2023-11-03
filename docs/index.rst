@@ -9,7 +9,7 @@ uxdiff
 
 Compares the two sequences well and outputs the difference
 
-overview
+Overview
 ===========
 
 Install
@@ -25,21 +25,11 @@ Example
 
 text1.txt
 
-.. code-block::
-
-   1. Beautiful is better than ugly.
-   2. Explicit is better than implicit.
-   3. Simple is better than complex.
-   4. Complex is better than complicated.
+.. program-output:: cat ../examples/text1.txt
 
 text2.txt
 
-.. code-block::
-
-   1. Beautiful is better than ugly.
-   2.   Simple is better than complex.
-   3. Complicated is better than complex.
-   4. Flat is better than nested.
+.. program-output:: cat ../examples/text2.txt
 
 compare
 
@@ -47,26 +37,7 @@ compare
 
    uxdiff text1.txt text2.txt --color never
 
-.. code-block::
-
-   --- text1.txt (utf-8)
-   +++ text2.txt (utf-8)
-        1      1|     1. Beautiful is better than ugly.
-        2       | -   2. Explicit is better than implicit.
-        3       | -   3. Simple is better than complex.
-        4       | -   4. Complex is better than complicated.
-               2| +   3.   Simple is better than complex.
-               3| +   4. Complicated is better than complex.
-               4| +   5. Flat is better than nested.
-   
-   [     ]      |    ++                                
-   [ <-  ]     3|  3.   Simple is better than complex. 
-   [  -> ]     2|  3.   Simple is better than complex. 
-   
-   [     ]      |          ++++ !                     ---- !  
-   [ <-  ]     4|  4. Compl    ex is better than complicated. 
-   [  -> ]     3|  4. Complicated is better than compl    ex. 
-
+.. program-output:: sh -c "cd ../examples && uxdiff text1.txt text2.txt --color never"
 
 supported multi-byte string. set the encoding with an argument if you need.
 
@@ -79,7 +50,6 @@ Usage
 ------
 
 .. program-output:: uxdiff --help
-
 
 License
 --------------------
@@ -99,7 +69,8 @@ License
 
 Module interface
 ==================================
-..
-   .. automodule:: uxdiff
+
+.. automodule:: uxdiff
+   :members: tabulate
 .. autoclass:: uxdiff.Differ
    :members: compare
