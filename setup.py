@@ -5,7 +5,7 @@ import sys
 from setuptools import setup
 
 __author__ =  'Tanaga'
-__version__=  '1.5.0'
+__version__=  '1.5.1'
 
 META_INFO = {
     'version'     : __version__,

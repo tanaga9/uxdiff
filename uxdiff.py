@@ -16,7 +16,7 @@ Compare two text files or directories (or sequences); generate the differences.
 
 """
 
-__version__=  '1.5.0'
+__version__=  '1.5.1'
 
 
 # The MIT License (MIT)
