@@ -2150,8 +2150,9 @@ def main():
 
     if hasattr(args, 'test') and args.test:
         import doctest
-        doctest.testmod(verbose=True)
-        parser.exit()
+        result = doctest.testmod(verbose=False)
+        print(result)
+        parser.exit(0 if result.failed == 0 else 1)
 
     if hasattr(args, 'profile') and args.profile:
         import profile
