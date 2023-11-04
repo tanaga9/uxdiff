@@ -356,8 +356,6 @@ class Differ:
             * bytes
             * tuple
             * namedtuple
-            * frozenset
-            * frozendict
             * ...
 
 

@@ -168,10 +168,6 @@ Compare two text files or directories (or sequences); generate the differences.
 
            * namedtuple
 
-           * frozenset
-
-           * frozendict
-
            * …
 
       Example:
