@@ -5,6 +5,15 @@
 
 """
 Compare two text files or directories (or sequences); generate the differences.
+
++---------------+--------------------------+-----------------------------------+
+| Environment   | Diff Representation      | target of the intended compare    |
++===============+==========================+===================================+
+| ANSI terminal | ANSI escape code (color) | two text files or directories     |
++---------------+--------------------------+-----------------------------------+
+| Jupyter       | HTML Table               | two sequences of hashable objects |
++---------------+--------------------------+-----------------------------------+
+
 """
 
 __version__=  '1.5.0'
@@ -907,7 +916,10 @@ class Differ:
             colortext_array.append(colortext)
         return colortext_array
 
-    def pretty_compare(self, lines1, lines2, width, withcolor=False, offset1=0, offset2=0):
+    def pretty_compare(self, lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0):
+        r"""
+        Compare two sequences of string; return a generator of pretty difference representations.
+        """
         for diff in self.compare(lines1, lines2):
             if   diff is None:
                 for textlinediff in self.textlinediffs():

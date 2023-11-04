@@ -65,3 +65,7 @@ Module interface
    :members: tabulate
 .. autoclass:: uxdiff.Differ
    :members: compare
+.. autoclass:: uxdiff.UniLikeDiffer
+   :members: pretty_compare
+.. autoclass:: uxdiff.SidebysideDiffer
+   :members: pretty_compare

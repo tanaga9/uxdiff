@@ -137,6 +137,14 @@ Module interface
 
 Compare two text files or directories (or sequences); generate the differences.
 
++-----------------+----------------------------+-------------------------------------+
+| Environment     | Diff Representation        | target of the intended compare      |
++=================+============================+=====================================+
+| ANSI terminal   | ANSI escape code (color)   | two text files or directories       |
++-----------------+----------------------------+-------------------------------------+
+| Jupyter         | HTML Table                 | two sequences of hashable objects   |
++-----------------+----------------------------+-------------------------------------+
+
 **uxdiff.tabulate(diffs, truncate=None)**
 
    Output the detected difference as an HTML table (for Jupyter).
@@ -301,3 +309,15 @@ Compare two text files or directories (or sequences); generate the differences.
       +--------------+--------------------------------------------------------+
       | “!”          | different to both inline sequences                     |
       +--------------+--------------------------------------------------------+
+
+**class uxdiff.UniLikeDiffer(*args, **kwargs)**
+
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0)**
+
+      Compare two sequences of string; return a generator of pretty difference representations.
+
+**class uxdiff.SidebysideDiffer(*args, **kwargs)**
+
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0)**
+
+      Compare two sequences of string; return a generator of pretty difference representations.
