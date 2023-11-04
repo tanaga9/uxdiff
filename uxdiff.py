@@ -64,10 +64,8 @@ BUFSIZE = 8*1024
 
 colormodes = {'always': True, 'never': False, 'auto': None}
 
-global_withbg = False
-def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=None):
+def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=False):
     if not withcolor: return ''
-    if withbg is None: withbg = global_withbg
     bg1 = '' if not withbg else ';47'
     bg2 = '' if not withbg else ';47'
     bold = ';1'
@@ -884,7 +882,7 @@ class Differ:
         return
 
     @staticmethod
-    def _colordiff(text_array, linediff, side): # side is 0(left) or 1(right)
+    def _colordiff(text_array, linediff, side, withbg=False): # side is 0(left) or 1(right)
         colortext_array = []
         index = 0
         index_linediff = 0
@@ -901,8 +899,8 @@ class Differ:
                 text = text[minlen:]
                 deltatext = linediff_delta[:minlen].replace('\t', ' ')
 
-                scolor  = getcolor(True, chartag, side, 0)
-                ecolor  = getcolor(True, chartag, side, 1)
+                scolor  = getcolor(True, chartag, side, 0, withbg=withbg)
+                ecolor  = getcolor(True, chartag, side, 1, withbg=withbg)
 
                 colortext += scolor
                 colortext += deltatext
@@ -916,7 +914,7 @@ class Differ:
             colortext_array.append(colortext)
         return colortext_array
 
-    def pretty_compare(self, lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0):
+    def pretty_compare(self, lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0):
         r"""
         Compare two sequences of string; return a generator of pretty difference representations.
         """
@@ -935,7 +933,7 @@ class Differ:
                 if num1 is not None: num1 += offset1
                 if num2 is not None: num2 += offset2
                 self.formattext(tag, num1, text1, num2, text2, width,
-                    withcolor=withcolor, linediff=linediff)
+                    withcolor=withcolor, withbg=withbg, linediff=linediff)
                 if tag == '|':
                     self.formatlinetext(num1, num2, linediff, width,
                         withcolor=withcolor)
@@ -946,7 +944,7 @@ class Differ:
             for textlinediff in self.textlinediffs():
                 yield textlinediff
 
-    def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
+    def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, withbg=False, linediff=None):
         raise NotImplementedError()
     def formatlinetext(self, num1, num2, linediff, width, withcolor=False):
         raise NotImplementedError()
@@ -968,7 +966,8 @@ class SidebysideDiffer(Differ):
 
     # 差分についてプレーンテキストでフォーマッティングを行う関数
     # （行内差分についてはサポートしていない）
-    def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
+    def formattext(self, tag, num1, text1, num2, text2, width,
+                   withcolor=False, withbg=False, linediff=None):
         """
 
         Example:
@@ -1025,18 +1024,18 @@ class SidebysideDiffer(Differ):
         text2_array = strwidthdiv(text2, textwidth)
 
         if tag == '|' and withcolor and linediff is not None:
-            colortext1_array = Differ._colordiff(text1_array, linediff, 0)
-            colortext2_array = Differ._colordiff(text2_array, linediff, 1)
+            colortext1_array = Differ._colordiff(text1_array, linediff, 0, withbg=withbg)
+            colortext2_array = Differ._colordiff(text2_array, linediff, 1, withbg=withbg)
 
         elif (tag == '<' or tag == '>') and withcolor:
-            scolor  = getcolor(True, tag, 0, 0)
-            ecolor  = getcolor(True, tag, 0, 1)
+            scolor  = getcolor(True, tag, 0, 0, withbg=withbg)
+            ecolor  = getcolor(True, tag, 0, 1, withbg=withbg)
             colortext1_array = []
             for i, text1 in enumerate(text1_array):
                 colortext1_array.append(scolor + text1 + ecolor)
 
-            scolor  = getcolor(True, tag, 1, 0)
-            ecolor  = getcolor(True, tag, 1, 1)
+            scolor  = getcolor(True, tag, 1, 0, withbg=withbg)
+            ecolor  = getcolor(True, tag, 1, 1, withbg=withbg)
             colortext2_array = []
             for i, text2 in enumerate(text2_array):
                 colortext2_array.append(scolor + text2 + ecolor)
@@ -1214,7 +1213,8 @@ class UniLikeDiffer(SidebysideDiffer):
         self.array_textdiffs_delay = []
         return
 
-    def formattext(self, tag, num1, text1, num2, text2, width, withcolor=False, linediff=None):
+    def formattext(self, tag, num1, text1, num2, text2, width,
+                   withcolor=False, withbg=False, linediff=None):
 
         assert width >= (6 + 1 + 6 + 1 + 3)
         textwidth = width - (6 + 1 + 6 + 1 + 3)
@@ -1235,20 +1235,20 @@ class UniLikeDiffer(SidebysideDiffer):
             text2_array = []
 
         if tag == '|' and withcolor and linediff is not None:
-            colortext1_array = Differ._colordiff(text1_array, linediff, 0)
-            colortext2_array = Differ._colordiff(text2_array, linediff, 1)
+            colortext1_array = Differ._colordiff(text1_array, linediff, 0, withbg=withbg)
+            colortext2_array = Differ._colordiff(text2_array, linediff, 1, withbg=withbg)
 
         elif tag == '<' and withcolor:
-            scolor  = getcolor(True, tag, 0, 0)
-            ecolor  = getcolor(True, tag, 0, 1)
+            scolor  = getcolor(True, tag, 0, 0, withbg=withbg)
+            ecolor  = getcolor(True, tag, 0, 1, withbg=withbg)
             colortext1_array = []
             colortext2_array = []
             for i, text1 in enumerate(text1_array):
                 colortext1_array.append(scolor + text1 + ecolor)
 
         elif tag == '>' and withcolor:
-            scolor  = getcolor(True, tag, 1, 0)
-            ecolor  = getcolor(True, tag, 1, 1)
+            scolor  = getcolor(True, tag, 1, 0, withbg=withbg)
+            ecolor  = getcolor(True, tag, 1, 1, withbg=withbg)
             colortext1_array = []
             colortext2_array = []
             for i, text2 in enumerate(text2_array):
@@ -1283,11 +1283,11 @@ class UniLikeDiffer(SidebysideDiffer):
                         scolor = ''
                         ecolor = ''
                         if ptag == '-':
-                            scolor  = getcolor(True, ptag, 0, 0)
-                            ecolor  = getcolor(True, ptag, 0, 1)
+                            scolor  = getcolor(True, ptag, 0, 0, withbg=withbg)
+                            ecolor  = getcolor(True, ptag, 0, 1, withbg=withbg)
                         elif ptag == '+':
-                            scolor  = getcolor(True, ptag, 1, 0)
-                            ecolor  = getcolor(True, ptag, 1, 1)
+                            scolor  = getcolor(True, ptag, 1, 0, withbg=withbg)
+                            ecolor  = getcolor(True, ptag, 1, 1, withbg=withbg)
                         cptag = scolor + ptag + ecolor
                         cpnum1 = scolor + pnum1.rjust(6) + ecolor
                         cpnum2 = scolor + pnum2.rjust(6) + ecolor
@@ -1657,7 +1657,7 @@ class ext_dircmp(filecmp.dircmp):
 
 def formatdircmp(tag, head1, text1, head2, text2, width,
                  cont_mark1='^', cont_mark2='^', sep_mark='|',
-                 withcolor=False):
+                 withcolor=False, withbg=False):
     pwidth = ((strwidth(head1) + strwidth(sep_mark)) +
               (1 + strwidth(tag) + 1) +
               (strwidth(head2) + strwidth(sep_mark)))
@@ -1682,23 +1682,23 @@ def formatdircmp(tag, head1, text1, head2, text2, width,
 
         line += head1
         line += sep_mark
-        line += getcolor(withcolor, tag, 0, 0, isdircmp=True)
+        line += getcolor(withcolor, tag, 0, 0, isdircmp=True, withbg=withbg)
         line += ptext1
-        line += getcolor(withcolor, tag, 0, 1, isdircmp=True)
+        line += getcolor(withcolor, tag, 0, 1, isdircmp=True, withbg=withbg)
         line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
         if   i == 0:     line += (' ' + tag + ' ')
         elif tag == ' ': line += (' ' + ' ' + ' ')
         else:            line += (' ' + '^' + ' ')
         line += head2
         line += sep_mark
-        line += getcolor(withcolor, tag, 1, 0, isdircmp=True)
+        line += getcolor(withcolor, tag, 1, 0, isdircmp=True, withbg=withbg)
         line += ptext2
-        line += getcolor(withcolor, tag, 1, 1, isdircmp=True)
+        line += getcolor(withcolor, tag, 1, 1, isdircmp=True, withbg=withbg)
         yield line
     return
 
 # 独自の形式で等幅フォントのターミナルで表示するための文字列の差分を返す。
-def original_diff(differ, lines1, lines2, width, withcolor=False):
+def original_diff(differ, lines1, lines2, width, withcolor=False, withbg=False):
     r"""
 
     Example:
@@ -1743,7 +1743,7 @@ def original_diff(differ, lines1, lines2, width, withcolor=False):
     lines1 = [expandtabs(line, tabsize=4) for line in lines1]
     lines2 = [expandtabs(line, tabsize=4) for line in lines2]
 
-    for diff in differ.pretty_compare(lines1, lines2, width, withcolor):
+    for diff in differ.pretty_compare(lines1, lines2, width, withcolor, withbg=withbg):
         yield diff
 
 def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
@@ -1896,7 +1896,7 @@ def parse_unidiff(diff):
     return
 
 def parse_unidiff_and_original_diff(
-        differ, udiffs, width, withcolor=False):
+        differ, udiffs, width, withcolor=False, withbg=False):
     r"""
 
     Example:
@@ -2003,7 +2003,7 @@ def parse_unidiff_and_original_diff(
                 lines2 = [expandtabs(str(line)[1:], tabsize=4) for line in hunk.target_lines()]
 
                 textlinediffs = []
-                for diff in differ.pretty_compare(lines1, lines2, width, withcolor,
+                for diff in differ.pretty_compare(lines1, lines2, width, withcolor, withbg=withbg,
                     offset1=hunk.source_start - 1,
                     offset2=hunk.target_start - 1):
                     yield diff
@@ -2235,9 +2235,9 @@ def uxdiff(args, parser):
             if not sys.stdout.isatty():
                 withcolor = False
 
+    withbg = False
     if withcolor and args.withbg:
-        global global_withbg
-        global_withbg = True
+        withbg = True
 
     differ_class = UniLikeDiffer
     if args.side_by_side:
@@ -2259,7 +2259,8 @@ def uxdiff(args, parser):
                 differ,
                 sys.stdin,
                 width=args.width,
-                withcolor=withcolor):
+                withcolor=withcolor,
+                withbg=withbg):
             print(line)
     elif os.path.isdir(file_or_dir1) and os.path.isdir(file_or_dir2):
         # diff [DIR] and [DIR]
@@ -2408,7 +2409,8 @@ def uxdiff(args, parser):
             differ,
             lines1, lines2,
             width=args.width,
-            withcolor=withcolor)
+            withcolor=withcolor,
+            withbg=withbg)
 
         for line in diff: print(line)
     return 0
