@@ -153,7 +153,7 @@ Compare two text files or directories (or sequences); generate the differences.
 
       Requirement is
 
-      * both sequences must be iterable.
+      * both sequences must be iterable (no generator).
 
       * items in a sequence must be (recursively) hashable.
 

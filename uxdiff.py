@@ -346,7 +346,7 @@ class Differ:
 
         Requirement is
 
-        * both sequences must be iterable.
+        * both sequences must be iterable (no generator).
         * items in a sequence must be (recursively) hashable.
 
         If the items of a sequences are iterable, detect similar ones as needed.
