@@ -174,7 +174,7 @@ Compare two text files or directories (or sequences); generate the differences.
 
            * tuple
 
-           * namedtuple
+           * namedtuple (e.g., using pandas.DataFrame.itertuples())
 
            * …
 
@@ -298,26 +298,26 @@ Compare two text files or directories (or sequences); generate the differences.
       | List         | [(InlineCode, SlicedItem1 | None, SlicedItem2 | None), … ]           |
       +--------------+----------------------------------------------------------------------+
 
-      +--------------+--------------------------------------------------------+
-      | InlineCode   | Meaning                                                |
-      +==============+========================================================+
-      | “-”          | unique to inline sequence 1 (item of sequence 1)       |
-      +--------------+--------------------------------------------------------+
-      | “+”          | unique to inline sequence 2 (item of sequence 2)       |
-      +--------------+--------------------------------------------------------+
-      | “ “          | common to both inline sequences                        |
-      +--------------+--------------------------------------------------------+
-      | “!”          | different to both inline sequences                     |
-      +--------------+--------------------------------------------------------+
+      +--------------+----------------------------------------------------------+
+      | InlineCode   | Meaning                                                  |
+      +==============+==========================================================+
+      | “-”          | unique to inline sequence 1 (item of sequence 1)         |
+      +--------------+----------------------------------------------------------+
+      | “+”          | unique to inline sequence 2 (item of sequence 2)         |
+      +--------------+----------------------------------------------------------+
+      | “ “          | common to both inline sequences (item of sequences)      |
+      +--------------+----------------------------------------------------------+
+      | “!”          | different to both inline sequences (item of sequences)   |
+      +--------------+----------------------------------------------------------+
 
-**class uxdiff.UniLikeDiffer(*args, **kwargs)**
+**class uxdiff.LikeUnifiedDiffer(*args, **kwargs)**
 
-   **pretty_compare(lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0)**
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0)**
 
       Compare two sequences of string; return a generator of pretty difference representations.
 
-**class uxdiff.SidebysideDiffer(*args, **kwargs)**
+**class uxdiff.SideBySideDiffer(*args, **kwargs)**
 
-   **pretty_compare(lines1, lines2, width=130, withcolor=False, offset1=0, offset2=0)**
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0)**
 
       Compare two sequences of string; return a generator of pretty difference representations.

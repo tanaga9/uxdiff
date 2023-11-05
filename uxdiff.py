@@ -62,9 +62,9 @@ import functools
 
 BUFSIZE = 8*1024
 
-colormodes = {'always': True, 'never': False, 'auto': None}
+_colormodes = {'always': True, 'never': False, 'auto': None}
 
-def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=False):
+def _getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=False):
     if not withcolor: return ''
     bg1 = '' if not withbg else ';47'
     bg2 = '' if not withbg else ';47'
@@ -96,7 +96,7 @@ def getcolor(withcolor, tag, side, openclose, isdircmp=False, withbg=False):
         }
     return colors[tag][side][openclose]
 
-def is_text(filepath):
+def _is_text(filepath):
     bufsize = BUFSIZE
     fp = open(filepath, 'rb')
     try:
@@ -116,7 +116,7 @@ def is_text(filepath):
 # 文字列の幅(文字幅)を返す関数。
 # 等幅フォントで表示されるASCII文字の横幅を1とする
 # (この関数は幅広文字を表示する環境のためにある)
-def strwidth(text, ambiguous_wide=True):
+def _strwidth(text, ambiguous_wide=True):
     """A function to give back the width (a character width) of string.
 
     Unit of width is one ASCII displayed by a monospaced font
@@ -124,7 +124,7 @@ def strwidth(text, ambiguous_wide=True):
 
     Example:
 
-    >>> strwidth('teststring')
+    >>> _strwidth('teststring')
     10
     """
 
@@ -171,51 +171,51 @@ def strwidth(text, ambiguous_wide=True):
     return width
 
 if hasattr(functools, 'lru_cache'):
-    strwidth = functools.lru_cache(maxsize=1024)(strwidth)
+    _strwidth = functools.lru_cache(maxsize=1024)(_strwidth)
 
 # タブ文字を展開する。（マルチバイト文字をサポート）
-def expandtabs(text, tabsize=8, expandto='\t'):
+def _expandtabs(text, tabsize=8, expandto='\t'):
     r"""Expand tabs(supports multibytes chars)
 
     Example:
 
-    >>> expandtabs('text')
+    >>> _expandtabs('text')
     'text'
 
-    >>> expandtabs('\ta\tab\tend')
+    >>> _expandtabs('\ta\tab\tend')
     '\t\t\t\t\t\t\t\ta\t\t\t\t\t\t\tab\t\t\t\t\t\tend'
 
-    >>> expandtabs('abcdabc\tabcdabcd\tabcdabcda\tend')
+    >>> _expandtabs('abcdabc\tabcdabcd\tabcdabcda\tend')
     'abcdabc\tabcdabcd\t\t\t\t\t\t\t\tabcdabcda\t\t\t\t\t\t\tend'
 
-    >>> expandtabs('\ta\tab\tabc\tabcd\tend', tabsize=4, expandto='@')
+    >>> _expandtabs('\ta\tab\tabc\tabcd\tend', tabsize=4, expandto='@')
     '@@@@a@@@ab@@abc@abcd@@@@end'
 
     """
     index = text.find('\t')
     while index != -1:
-        real_tabsize = tabsize - strwidth(text[:index]) % tabsize
+        real_tabsize = tabsize - _strwidth(text[:index]) % tabsize
         text = text[:index] + (expandto * real_tabsize) + text[index + 1:]
         index = text.find('\t', index + real_tabsize)
 
     return text
 
 # 文字列を指定された幅で分割する
-def strwidthdiv(text, width=180):
+def _strwidthdiv(text, width=180):
     """divide string by appointed width
 
     Example:
 
-    >>> strwidthdiv('teststring', 2)
+    >>> _strwidthdiv('teststring', 2)
     ['te', 'st', 'st', 'ri', 'ng']
 
-    >>> strwidthdiv('teststring', 3)
+    >>> _strwidthdiv('teststring', 3)
     ['tes', 'tst', 'rin', 'g']
 
-    >>> strwidthdiv('teststring', 8)
+    >>> _strwidthdiv('teststring', 8)
     ['teststri', 'ng']
 
-    >>> strwidthdiv('teststring', 15)
+    >>> _strwidthdiv('teststring', 15)
     ['teststring']
     """
 
@@ -226,13 +226,13 @@ def strwidthdiv(text, width=180):
     # 文字列を文字ごとに走査
     for char in text:
         # 文字幅を文字列長に加算する
-        strbuffer_width += strwidth(char)
+        strbuffer_width += _strwidth(char)
         # もし折り返し文字幅を超えている場合は文字列を折り返す
         if strbuffer_width > width:
             # バッファの文字列を配列に加える
             array.append(strbuffer)
             strbuffer = char
-            strbuffer_width = strwidth(char)
+            strbuffer_width = _strwidth(char)
         else:
             # 文字を連結する
             strbuffer += char
@@ -243,15 +243,15 @@ def strwidthdiv(text, width=180):
 
 
 # 複数の文字列を指定された幅で同期を取って分割する
-def strwidthdivsync(textarray, width=180):
+def _strwidthdivsync(textarray, width=180):
     """synclonize divide some string by appointed width
 
     Example:
 
-    >>> strwidthdivsync(('test', 'string', ''), width=2)
+    >>> _strwidthdivsync(('test', 'string', ''), width=2)
     [['te', 'st', ''], ['st', 'ri', 'ng'], ['', '', '']]
 
-    >>> strwidthdivsync(('test', 'string', ''), width=3)
+    >>> _strwidthdivsync(('test', 'string', ''), width=3)
     [['tes', 't'], ['str', 'ing'], ['', '']]
     """
 
@@ -273,13 +273,13 @@ def strwidthdivsync(textarray, width=180):
         # 複数の文字列の中から1文字を抜き出し、
         # その中から最大の横幅(1 or 2)を計算する
         # 範囲外の例外を抑止して空文字を返すために前後両方を指定してスライスする
-        maxwidth = max([strwidth(text[pos[i]:pos[i]+1])
+        maxwidth = max([_strwidth(text[pos[i]:pos[i]+1])
                         for i, text in enumerate(textarray)])
 
         # 最大の横幅(1 or 2)分だけ切り出す
         for i, text in enumerate(textarray):
             # 範囲外の例外を抑止して空文字を返すために前後両方を指定してスライスする
-            char[i] = strwidthdiv(text[pos[i]:], maxwidth)[0]
+            char[i] = _strwidthdiv(text[pos[i]:], maxwidth)[0]
             # 先頭のポインタをずらす
             pos[i] += len(char[i])
         if ''.join(char) == '': break
@@ -362,7 +362,7 @@ class Differ:
             * string
             * bytes
             * tuple
-            * namedtuple
+            * namedtuple (e.g., using pandas.DataFrame.itertuples())
             * ...
 
 
@@ -486,17 +486,17 @@ class Differ:
         | List       | [(InlineCode, SlicedItem1 | None, SlicedItem2 | None), ... ]       |
         +------------+--------------------------------------------------------------------+
 
-        +------------+------------------------------------------------------+
-        | InlineCode | Meaning                                              |
-        +============+======================================================+
-        | "-"        | unique to inline sequence 1 (item of sequence 1)     |
-        +------------+------------------------------------------------------+
-        | "+"        | unique to inline sequence 2 (item of sequence 2)     |
-        +------------+------------------------------------------------------+
-        | " "        | common to both inline sequences                      |
-        +------------+------------------------------------------------------+
-        | "!"        | different to both inline sequences                   |
-        +------------+------------------------------------------------------+
+        +------------+--------------------------------------------------------+
+        | InlineCode | Meaning                                                |
+        +============+========================================================+
+        | "-"        | unique to inline sequence 1 (item of sequence 1)       |
+        +------------+--------------------------------------------------------+
+        | "+"        | unique to inline sequence 2 (item of sequence 2)       |
+        +------------+--------------------------------------------------------+
+        | " "        | common to both inline sequences (item of sequences)    |
+        +------------+--------------------------------------------------------+
+        | "!"        | different to both inline sequences (item of sequences) |
+        +------------+--------------------------------------------------------+
 
         """
 
@@ -899,8 +899,8 @@ class Differ:
                 text = text[minlen:]
                 deltatext = linediff_delta[:minlen].replace('\t', ' ')
 
-                scolor  = getcolor(True, chartag, side, 0, withbg=withbg)
-                ecolor  = getcolor(True, chartag, side, 1, withbg=withbg)
+                scolor  = _getcolor(True, chartag, side, 0, withbg=withbg)
+                ecolor  = _getcolor(True, chartag, side, 1, withbg=withbg)
 
                 colortext += scolor
                 colortext += deltatext
@@ -957,7 +957,7 @@ class Differ:
     def textdiffs(self):
         raise NotImplementedError()
 
-class SidebysideDiffer(Differ):
+class SideBySideDiffer(Differ):
     def __init__(self, *args, **kwargs):
         Differ.__init__(self, *args, **kwargs)
         self.array_textdiffs = []
@@ -972,7 +972,7 @@ class SidebysideDiffer(Differ):
 
         Example:
 
-        >>> differ = SidebysideDiffer()
+        >>> differ = SideBySideDiffer()
         >>> differ.formattext('|', 1, 'aaa', 2, 'bbb', 80)
         >>> list(differ.textdiffs())
         ['     2|aaa                             |      3|bbb']
@@ -1020,22 +1020,22 @@ class SidebysideDiffer(Differ):
         text1 = text1.replace('\t', ' ')
         text2 = text2.replace('\t', ' ')
 
-        text1_array = strwidthdiv(text1, textwidth)
-        text2_array = strwidthdiv(text2, textwidth)
+        text1_array = _strwidthdiv(text1, textwidth)
+        text2_array = _strwidthdiv(text2, textwidth)
 
         if tag == '|' and withcolor and linediff is not None:
             colortext1_array = Differ._colordiff(text1_array, linediff, 0, withbg=withbg)
             colortext2_array = Differ._colordiff(text2_array, linediff, 1, withbg=withbg)
 
         elif (tag == '<' or tag == '>') and withcolor:
-            scolor  = getcolor(True, tag, 0, 0, withbg=withbg)
-            ecolor  = getcolor(True, tag, 0, 1, withbg=withbg)
+            scolor  = _getcolor(True, tag, 0, 0, withbg=withbg)
+            ecolor  = _getcolor(True, tag, 0, 1, withbg=withbg)
             colortext1_array = []
             for i, text1 in enumerate(text1_array):
                 colortext1_array.append(scolor + text1 + ecolor)
 
-            scolor  = getcolor(True, tag, 1, 0, withbg=withbg)
-            ecolor  = getcolor(True, tag, 1, 1, withbg=withbg)
+            scolor  = _getcolor(True, tag, 1, 0, withbg=withbg)
+            ecolor  = _getcolor(True, tag, 1, 1, withbg=withbg)
             colortext2_array = []
             for i, text2 in enumerate(text2_array):
                 colortext2_array.append(scolor + text2 + ecolor)
@@ -1073,7 +1073,7 @@ class SidebysideDiffer(Differ):
             line += (pnum1.rjust(6))
             line += ('|')
             line += (ctext1)
-            line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
+            line += (max(textwidth - _strwidth(ptext1), 0) * ' ' + '')
             if   i == 0:     line += (' ' + tag + ' ')
             elif tag == ' ': line += (' ' + ' ' + ' ')
             else:            line += (' ' + '^' + ' ')
@@ -1092,7 +1092,7 @@ class SidebysideDiffer(Differ):
         Example:
 
         >>> import pprint
-        >>> differ = SidebysideDiffer()
+        >>> differ = SideBySideDiffer()
         >>> differ.formatlinetext(
         ...     1, 2,
         ...     [('!', 'bbb', 'aaaaa'),
@@ -1128,37 +1128,37 @@ class SidebysideDiffer(Differ):
                 text2 = text2.replace('\t', ' ')
 
             if   tag == ' ':
-                buffertag   += ' ' * strwidth(text1)
+                buffertag   += ' ' * _strwidth(text1)
                 buffertext1 += text1
                 buffertext2 += text2
             elif tag == '+':
-                buffertag   += '+' * strwidth(text2)
-                buffertext1 += ' ' * strwidth(text2)
+                buffertag   += '+' * _strwidth(text2)
+                buffertext1 += ' ' * _strwidth(text2)
                 buffertext2 += text2
             elif tag == '-':
-                buffertag   += '-' * strwidth(text1)
+                buffertag   += '-' * _strwidth(text1)
                 buffertext1 += text1
-                buffertext2 += ' ' * strwidth(text1)
+                buffertext2 += ' ' * _strwidth(text1)
             elif tag == '!':
-                maxwidth = max(strwidth(text1), strwidth(text2))
-                minwidth = min(strwidth(text1), strwidth(text2))
+                maxwidth = max(_strwidth(text1), _strwidth(text2))
+                minwidth = min(_strwidth(text1), _strwidth(text2))
                 subtag = '!'
-                if strwidth(text1) < strwidth(text2):
+                if _strwidth(text1) < _strwidth(text2):
                     subtag = '+'
-                    buffertag += tag * minwidth + subtag * (strwidth(text2) - strwidth(text1))
+                    buffertag += tag * minwidth + subtag * (_strwidth(text2) - _strwidth(text1))
                 else:
                     subtag = '-'
-                    buffertag += tag * minwidth + subtag * (strwidth(text1) - strwidth(text2))
+                    buffertag += tag * minwidth + subtag * (_strwidth(text1) - _strwidth(text2))
                 buffertext1 += text1[:minwidth]
                 buffertext1 += text1[minwidth:]
-                buffertext1 += ' ' * (maxwidth - strwidth(text1))
+                buffertext1 += ' ' * (maxwidth - _strwidth(text1))
                 buffertext2 += text2[:minwidth]
                 buffertext2 += text2[minwidth:]
-                buffertext2 += ' ' * (maxwidth - strwidth(text2))
+                buffertext2 += ' ' * (maxwidth - _strwidth(text2))
 
         (taglines,
          text1lines,
-         text2lines) = strwidthdivsync((buffertag,
+         text2lines) = _strwidthdivsync((buffertag,
                                         buffertext1,
                                         buffertext2),
                                         textwidth)
@@ -1207,9 +1207,9 @@ class SidebysideDiffer(Differ):
             yield ''
         self.array_textlinediffs = []
 
-class UniLikeDiffer(SidebysideDiffer):
+class LikeUnifiedDiffer(SideBySideDiffer):
     def __init__(self, *args, **kwargs):
-        SidebysideDiffer.__init__(self, *args, **kwargs)
+        SideBySideDiffer.__init__(self, *args, **kwargs)
         self.array_textdiffs_delay = []
         return
 
@@ -1224,13 +1224,13 @@ class UniLikeDiffer(SidebysideDiffer):
         if text1 is not None:
             text1 = text1.rstrip('\r\n')
             text1 = text1.replace('\t', ' ')
-            text1_array = strwidthdiv(text1, textwidth)
+            text1_array = _strwidthdiv(text1, textwidth)
         else:
             text1_array = []
         if text2 is not None:
             text2 = text2.rstrip('\r\n')
             text2 = text2.replace('\t', ' ')
-            text2_array = strwidthdiv(text2, textwidth)
+            text2_array = _strwidthdiv(text2, textwidth)
         else:
             text2_array = []
 
@@ -1239,16 +1239,16 @@ class UniLikeDiffer(SidebysideDiffer):
             colortext2_array = Differ._colordiff(text2_array, linediff, 1, withbg=withbg)
 
         elif tag == '<' and withcolor:
-            scolor  = getcolor(True, tag, 0, 0, withbg=withbg)
-            ecolor  = getcolor(True, tag, 0, 1, withbg=withbg)
+            scolor  = _getcolor(True, tag, 0, 0, withbg=withbg)
+            ecolor  = _getcolor(True, tag, 0, 1, withbg=withbg)
             colortext1_array = []
             colortext2_array = []
             for i, text1 in enumerate(text1_array):
                 colortext1_array.append(scolor + text1 + ecolor)
 
         elif tag == '>' and withcolor:
-            scolor  = getcolor(True, tag, 1, 0, withbg=withbg)
-            ecolor  = getcolor(True, tag, 1, 1, withbg=withbg)
+            scolor  = _getcolor(True, tag, 1, 0, withbg=withbg)
+            ecolor  = _getcolor(True, tag, 1, 1, withbg=withbg)
             colortext1_array = []
             colortext2_array = []
             for i, text2 in enumerate(text2_array):
@@ -1283,11 +1283,11 @@ class UniLikeDiffer(SidebysideDiffer):
                         scolor = ''
                         ecolor = ''
                         if ptag == '-':
-                            scolor  = getcolor(True, ptag, 0, 0, withbg=withbg)
-                            ecolor  = getcolor(True, ptag, 0, 1, withbg=withbg)
+                            scolor  = _getcolor(True, ptag, 0, 0, withbg=withbg)
+                            ecolor  = _getcolor(True, ptag, 0, 1, withbg=withbg)
                         elif ptag == '+':
-                            scolor  = getcolor(True, ptag, 1, 0, withbg=withbg)
-                            ecolor  = getcolor(True, ptag, 1, 1, withbg=withbg)
+                            scolor  = _getcolor(True, ptag, 1, 0, withbg=withbg)
+                            ecolor  = _getcolor(True, ptag, 1, 1, withbg=withbg)
                         cptag = scolor + ptag + ecolor
                         cpnum1 = scolor + pnum1.rjust(6) + ecolor
                         cpnum2 = scolor + pnum2.rjust(6) + ecolor
@@ -1430,7 +1430,7 @@ def tabulate(diffs, truncate=None):
     return JupyterHTMLStr(html)
 
 
-# filecmp.dircmp (ext_dircmp)
+# filecmp.dircmp (DirDiffer)
 #  |-- left_list           [files or dirs]
 #  | |-- left_only         [files or dirs]
 #  | `-.  |-- (ext_left_only_dirs)         [dirs]
@@ -1451,7 +1451,7 @@ def tabulate(diffs, truncate=None):
 #          |-- (ext_files_to_dirs) [file <-> dir ]
 #          `-- (ext_common_funny)  [????]
 
-class ext_dircmp(filecmp.dircmp):
+class DirDiffer(filecmp.dircmp):
 
     def phase1(self): # Compute common names
         filecmp.dircmp.phase1(self)
@@ -1521,7 +1521,7 @@ class ext_dircmp(filecmp.dircmp):
         for x in self.common_dirs:
             a_x = os.path.join(self.left, x)
             b_x = os.path.join(self.right, x)
-            self.subdirs[x]  = ext_dircmp(a_x, b_x, self.ignore, self.hide)
+            self.subdirs[x]  = DirDiffer(a_x, b_x, self.ignore, self.hide)
 
     def __getattr__(self, attr):
         methodmap = {'subdirs' : self.phase4,
@@ -1655,18 +1655,18 @@ class ext_dircmp(filecmp.dircmp):
         return
 
 
-def formatdircmp(tag, head1, text1, head2, text2, width,
+def _formatdircmp(tag, head1, text1, head2, text2, width,
                  cont_mark1='^', cont_mark2='^', sep_mark='|',
                  withcolor=False, withbg=False):
-    pwidth = ((strwidth(head1) + strwidth(sep_mark)) +
-              (1 + strwidth(tag) + 1) +
-              (strwidth(head2) + strwidth(sep_mark)))
+    pwidth = ((_strwidth(head1) + _strwidth(sep_mark)) +
+              (1 + _strwidth(tag) + 1) +
+              (_strwidth(head2) + _strwidth(sep_mark)))
 
     assert width >= pwidth
     textwidth = int((width - pwidth) / 2)
 
-    text1_array = strwidthdiv(text1, textwidth)
-    text2_array = strwidthdiv(text2, textwidth)
+    text1_array = _strwidthdiv(text1, textwidth)
+    text2_array = _strwidthdiv(text2, textwidth)
 
     for i in range(max(len(text1_array), len(text2_array))):
         line = ''
@@ -1682,23 +1682,23 @@ def formatdircmp(tag, head1, text1, head2, text2, width,
 
         line += head1
         line += sep_mark
-        line += getcolor(withcolor, tag, 0, 0, isdircmp=True, withbg=withbg)
+        line += _getcolor(withcolor, tag, 0, 0, isdircmp=True, withbg=withbg)
         line += ptext1
-        line += getcolor(withcolor, tag, 0, 1, isdircmp=True, withbg=withbg)
-        line += (max(textwidth - strwidth(ptext1), 0) * ' ' + '')
+        line += _getcolor(withcolor, tag, 0, 1, isdircmp=True, withbg=withbg)
+        line += (max(textwidth - _strwidth(ptext1), 0) * ' ' + '')
         if   i == 0:     line += (' ' + tag + ' ')
         elif tag == ' ': line += (' ' + ' ' + ' ')
         else:            line += (' ' + '^' + ' ')
         line += head2
         line += sep_mark
-        line += getcolor(withcolor, tag, 1, 0, isdircmp=True, withbg=withbg)
+        line += _getcolor(withcolor, tag, 1, 0, isdircmp=True, withbg=withbg)
         line += ptext2
-        line += getcolor(withcolor, tag, 1, 1, isdircmp=True, withbg=withbg)
+        line += _getcolor(withcolor, tag, 1, 1, isdircmp=True, withbg=withbg)
         yield line
     return
 
 # 独自の形式で等幅フォントのターミナルで表示するための文字列の差分を返す。
-def original_diff(differ, lines1, lines2, width, withcolor=False, withbg=False):
+def _original_diff(differ, lines1, lines2, width, withcolor=False, withbg=False):
     r"""
 
     Example:
@@ -1715,14 +1715,14 @@ def original_diff(differ, lines1, lines2, width, withcolor=False, withbg=False):
     ...   5. Flat is better than nested.
     ... '''.splitlines(1)
     >>>
-    >>> differ = SidebysideDiffer(
+    >>> differ = SideBySideDiffer(
     ...     linejunk=None,
     ...     charjunk=None,
     ...     cutoff=0.1,
     ...     fuzzy=0,
     ...     cutoffchar=False,
     ...     context=5)
-    >>> diff = original_diff(differ, text1, text2, width=100)
+    >>> diff = _original_diff(differ, text1, text2, width=100)
     >>> for line in diff: print('\'' + line + '\'')
     '     1|  1. Beautiful is better than ugly.              1|  1. Beautiful is better than ugly.'
     '     2|  2. Explicit is better than implicit.    <       |'
@@ -1740,15 +1740,15 @@ def original_diff(differ, lines1, lines2, width, withcolor=False, withbg=False):
     ''
     """
 
-    lines1 = [expandtabs(line, tabsize=4) for line in lines1]
-    lines2 = [expandtabs(line, tabsize=4) for line in lines2]
+    lines1 = [_expandtabs(line, tabsize=4) for line in lines1]
+    lines2 = [_expandtabs(line, tabsize=4) for line in lines2]
 
     for diff in differ.pretty_compare(lines1, lines2, width, withcolor, withbg=withbg):
         yield diff
 
-def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
+def _dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
     r"""Compare directories."""
-    dircmp   = ext_dircmp(dir1, dir2)
+    dircmp   = DirDiffer(dir1, dir2)
     dircmps  = [dircmp]
     dirtrees = [dircmp.dirtree()]
     heads1 = ['|']
@@ -1845,7 +1845,7 @@ def dircmp(dir1, dir2, enc_filepath='utf-8', recursive=False):
             heads1.pop()
             heads2.pop()
 
-def parse_unidiff(diff):
+def _parse_unidiff(diff):
     r"""Unified diff parser, takes a file-like object as argument.
 
     Example:
@@ -1860,7 +1860,7 @@ def parse_unidiff(diff):
     ...  foo
     ... -bar
     ... '''
-    >>> diffs = parse_unidiff((line for line in hg_diff.splitlines()))
+    >>> diffs = _parse_unidiff((line for line in hg_diff.splitlines()))
     >>> for (flag, diff) in diffs:
     ...     if flag: print(diff)
     ...     else:
@@ -1895,7 +1895,7 @@ def parse_unidiff(diff):
         yield (False, patch)
     return
 
-def parse_unidiff_and_original_diff(
+def _parse_unidiff_and_original_diff(
         differ, udiffs, width, withcolor=False, withbg=False):
     r"""
 
@@ -1918,11 +1918,11 @@ def parse_unidiff_and_original_diff(
     ... +4. Complicated is better than complex.
     ... +5. Flat is better than nested.
     ... '''
-    >>> differ = SidebysideDiffer(
+    >>> differ = SideBySideDiffer(
     ...     linejunk=None, charjunk=None,
     ...     cutoff=0.1, fuzzy=0,
     ...     cutoffchar=False, context=5)
-    >>> diff = parse_unidiff_and_original_diff(
+    >>> diff = _parse_unidiff_and_original_diff(
     ...     differ,
     ...     (line for line in svn_diff.splitlines()),
     ...     width=100)
@@ -1964,11 +1964,11 @@ def parse_unidiff_and_original_diff(
     ... +4. Complicated is better than complex.
     ... +5. Flat is better than nested.
     ... '''
-    >>> differ = SidebysideDiffer(
+    >>> differ = SideBySideDiffer(
     ...     linejunk=None, charjunk=None,
     ...     cutoff=0.1, fuzzy=0,
     ...     cutoffchar=False, context=5)
-    >>> diff = parse_unidiff_and_original_diff(
+    >>> diff = _parse_unidiff_and_original_diff(
     ...     differ,
     ...     (line for line in hg_diff.splitlines()),
     ...     width=100)
@@ -1994,13 +1994,13 @@ def parse_unidiff_and_original_diff(
     ''
     >>>
     """
-    diffs = parse_unidiff(udiffs)
+    diffs = _parse_unidiff(udiffs)
     for (flag, diff) in diffs:
         if flag: yield diff
         else:
             for hunk in diff:
-                lines1 = [expandtabs(str(line)[1:], tabsize=4) for line in hunk.source_lines()]
-                lines2 = [expandtabs(str(line)[1:], tabsize=4) for line in hunk.target_lines()]
+                lines1 = [_expandtabs(str(line)[1:], tabsize=4) for line in hunk.source_lines()]
+                lines2 = [_expandtabs(str(line)[1:], tabsize=4) for line in hunk.target_lines()]
 
                 textlinediffs = []
                 for diff in differ.pretty_compare(lines1, lines2, width, withcolor, withbg=withbg,
@@ -2009,7 +2009,7 @@ def parse_unidiff_and_original_diff(
                     yield diff
     return
 
-def getTerminalSize():
+def _get_terminal_size():
     env = os.environ
     def ioctl_GWINSZ(fd):
         try:
@@ -2030,12 +2030,12 @@ def getTerminalSize():
         cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
     return int(cr[1]), int(cr[0])
 
-def getdefaultencoding():
+def _get_default_encoding():
     defaultencoding = sys.getdefaultencoding()
     if defaultencoding == 'ascii': return 'utf8'
     return defaultencoding
 
-def make_argparser():
+def _make_argparser():
     # オプション解析
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
@@ -2112,15 +2112,15 @@ def make_argparser():
                         action=CheckCodec,
                         help='Set encoding of rightside inputfile2 (default utf-8)')
     # --enc-stdinオプション: Unified形式の差分を標準入力する際のコーデックを指定する（デフォルトはdefaultencoding）
-    parser.add_argument('--enc-stdin', metavar='ENCODING', type=str, default=getdefaultencoding(),
+    parser.add_argument('--enc-stdin', metavar='ENCODING', type=str, default=_get_default_encoding(),
                         action=CheckCodec,
                         help='Set encoding of standard input (default `defaultencoding`)')
     # --enc-stdoutオプション: 差分を標準出力する際のコーデックを指定する（デフォルトはdefaultencoding）
-    parser.add_argument('--enc-stdout', metavar='ENCODING', type=str, default=getdefaultencoding(),
+    parser.add_argument('--enc-stdout', metavar='ENCODING', type=str, default=_get_default_encoding(),
                         action=CheckCodec,
                         help='Set encoding of standard output (default `defaultencoding`)')
     # --enc-filepathオプション: ファイル名に使用されるコーデックを指定する（デフォルトはdefaultencoding）
-    parser.add_argument('--enc-filepath', metavar='ENCODING', type=str, default=getdefaultencoding(),
+    parser.add_argument('--enc-filepath', metavar='ENCODING', type=str, default=_get_default_encoding(),
                         action=CheckCodec,
                         help='Set encoding of filepath (default `defaultencoding`)')
     # --ignore-crlfオプション: 改行コードの違い（crとlf）を無視する
@@ -2128,7 +2128,7 @@ def make_argparser():
                         help='Ignore carriage return (\'\\r\') and line feed (\'\\n\') (default False)')
 
     # --colorオプション: 色付き表示の指定（デフォルトはauto）
-    parser.add_argument('--color', nargs='?', choices=colormodes.keys(),
+    parser.add_argument('--color', nargs='?', choices=_colormodes.keys(),
                         metavar='WHEN', type=str, default='auto',
                         help='Show colored diff. --color is the same as --color=always.'
                         ' WHEN can be one of always, never, or auto. (default auto)')
@@ -2145,7 +2145,7 @@ def make_argparser():
 def main():
     """main function"""
 
-    parser = make_argparser()
+    parser = _make_argparser()
 
     if __name__ == "__main__":
         # --testオプション: テストコードを実行
@@ -2156,7 +2156,7 @@ def main():
 
     # オプション解析を実行
     args = parser.parse_args()
-    args._colormodes = colormodes
+    args._colormodes = _colormodes
 
     if hasattr(args, 'test') and args.test:
         import doctest
@@ -2167,14 +2167,14 @@ def main():
     if hasattr(args, 'profile') and args.profile:
         import profile
         pr = profile.Profile()
-        ret = pr.runcall(uxdiff, args)
+        ret = pr.runcall(_uxdiff, args)
         pr.print_stats(sort=2)
         return ret
 
     # pdb.runcall(main)
-    return uxdiff(args, parser)
+    return _uxdiff(args, parser)
 
-def uxdiff(args, parser):
+def _uxdiff(args, parser):
 
     file_or_dir1, file_or_dir2 = args.file_or_dir_1, args.file_or_dir_2
     # 必須引数の個数が所定と異なる場合は
@@ -2217,7 +2217,7 @@ def uxdiff(args, parser):
         charjunk = None
 
     if args.width is None:
-        size = getTerminalSize()
+        size = _get_terminal_size()
         if size is not None:
             args.width = size[0]
         else:
@@ -2239,9 +2239,9 @@ def uxdiff(args, parser):
     if withcolor and args.withbg:
         withbg = True
 
-    differ_class = UniLikeDiffer
+    differ_class = LikeUnifiedDiffer
     if args.side_by_side:
-        differ_class = SidebysideDiffer
+        differ_class = SideBySideDiffer
 
     # 差分を抽出
     differ = differ_class(
@@ -2255,7 +2255,7 @@ def uxdiff(args, parser):
     cmpdir = False
     cmplist = []
     if file_or_dir1 is None:
-        for line in parse_unidiff_and_original_diff(
+        for line in _parse_unidiff_and_original_diff(
                 differ,
                 sys.stdin,
                 width=args.width,
@@ -2266,14 +2266,14 @@ def uxdiff(args, parser):
         # diff [DIR] and [DIR]
         cmpdir = True
 
-        for line in formatdircmp(' ',
+        for line in _formatdircmp(' ',
                                  '', file_or_dir1 + '/', '', file_or_dir2 + '/',
                                  args.width,
                                  cont_mark1='', cont_mark2='', sep_mark='',
                                  withcolor=withcolor):
             print(line)
 
-        for result in dircmp(file_or_dir1, file_or_dir2,
+        for result in _dircmp(file_or_dir1, file_or_dir2,
                              args.enc_filepath, args.recursive):
             (tag,
             head1, text1,
@@ -2281,7 +2281,7 @@ def uxdiff(args, parser):
             cont_mark1, cont_mark2,
             filepair) = result
 
-            for line in formatdircmp(tag,
+            for line in _formatdircmp(tag,
                                      head1, text1, head2, text2,
                                      args.width,
                                      cont_mark1=cont_mark1,
@@ -2324,8 +2324,8 @@ def uxdiff(args, parser):
             label[0] = file1
             label[1] = file2
 
-            is_text_file1 = is_text(file1)
-            is_text_file2 = is_text(file2)
+            is_text_file1 = _is_text(file1)
+            is_text_file2 = _is_text(file2)
 
             if not (is_text_file1 and is_text_file2):
                 if is_text_file1: filetype1 = 'Text'
@@ -2405,7 +2405,7 @@ def uxdiff(args, parser):
         # print(unicodestr.expandtabs(8).encode('sjis'))
         # print(unicodestr.encode('sjis'))
 
-        diff = original_diff(
+        diff = _original_diff(
             differ,
             lines1, lines2,
             width=args.width,
