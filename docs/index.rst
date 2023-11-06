@@ -50,7 +50,7 @@ See more examples_
 Usage
 ------
 
-.. argparse::
+.. sphinx_argparse_cli::
   :module: uxdiff
   :func: _make_argparser
   :prog: uxdiff

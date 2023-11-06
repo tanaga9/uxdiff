@@ -2,7 +2,7 @@ set -eu
 
 CMD="
 pip install \
-sphinx~=6.2.1 sphinxcontrib-programoutput sphinx-argparse sphinx-rst-builder ipython ipykernel nbconvert pandas .
+sphinx~=6.2.1 sphinxcontrib-programoutput sphinx-argparse-cli sphinx-rst-builder ipython ipykernel nbconvert pandas .
 jupyter nbconvert --execute --to notebook --inplace docs/example.ipynb
 # jupyter nbconvert --to rst docs/example.ipynb
 rm -r ./docs/_rst ./docs/_html
