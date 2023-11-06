@@ -73,57 +73,72 @@ See more `examples <https://github.com/tanaga9/uxdiff/blob/master/docs/example.i
 Usage
 -----
 
-.. code-block:: text
 
-   usage: uxdiff [-h] [--version] [-y] [-f] [-c NUM] [-w WIDTH] [-r]
-                 [--linejunk LINEJUNK] [--charjunk CHARJUNK] [--cutoff RATIO]
-                 [--fuzzy RATIO] [--cutoffchar] [--enc-file1 ENCODING]
-                 [--enc-file2 ENCODING] [--enc-stdin ENCODING]
-                 [--enc-stdout ENCODING] [--enc-filepath ENCODING]
-                 [--ignore-crlf] [--color [WHEN]] [--no-color] [--withbg]
-                 [file_or_dir_1] [file_or_dir_2]
+uxdiff - CLI interface
+~~~~~~~~~~~~~~~~~~~~~~
 
-   positional arguments:
-     file_or_dir_1         file or dir 1
-     file_or_dir_2         file or dir 2
+::
 
-   options:
-     -h, --help            show this help message and exit
-     --version             show program's version number and exit
-     -y, -s, --side-by-side
-                           output in two columns
-     -f, --full            Fulltext diff (default False) (disable context option)
-     -c NUM, --context NUM
-                           Set number of context lines (default 5)
-     -w WIDTH, --width WIDTH
-                           Set number of width (default auto(or 130))
-     -r, --recursive       Recursively compare any subdirectories found. (default
-                           False) (enable only compare directories)
-     --linejunk LINEJUNK   linejunk
-     --charjunk CHARJUNK   charjunk
-     --cutoff RATIO        Set number of cutoff ratio (default 0.75)
-                           (0.0<=ratio<=1.0)
-     --fuzzy RATIO         Set number of fuzzy matching ratio (default 0.0)
-                           (0.0<=ratio<=1.0)
-     --cutoffchar          Cutoff character in line diffs (default False)
-     --enc-file1 ENCODING  Set encoding of leftside inputfile1 (default utf-8)
-     --enc-file2 ENCODING  Set encoding of rightside inputfile2 (default utf-8)
-     --enc-stdin ENCODING  Set encoding of standard input (default
-                           `defaultencoding`)
-     --enc-stdout ENCODING
-                           Set encoding of standard output (default
-                           `defaultencoding`)
-     --enc-filepath ENCODING
-                           Set encoding of filepath (default `defaultencoding`)
-     --ignore-crlf         Ignore carriage return ('\r') and line feed ('\n')
-                           (default False)
-     --color [WHEN]        Show colored diff. --color is the same as
-                           --color=always. WHEN can be one of always, never, or
-                           auto. (default auto)
-     --no-color            Turn off colored diff. override color option if both.
-                           (default False)
-     --withbg              Colored diff with background color. It will be ignored
-                           if no-color option. (default False)
+   uxdiff [-h] [--version] [-y] [-f] [-c NUM] [-w WIDTH] [-r] [--linejunk LINEJUNK]
+          [--charjunk CHARJUNK] [--cutoff RATIO] [--fuzzy RATIO] [--cutoffchar]
+          [--enc-file1 ENCODING] [--enc-file2 ENCODING] [--enc-stdin ENCODING]
+          [--enc-stdout ENCODING] [--enc-filepath ENCODING] [--ignore-crlf] [--color [WHEN]]
+          [--no-color] [--withbg]
+          [file_or_dir_1] [file_or_dir_2]
+
+
+uxdiff positional arguments
+"""""""""""""""""""""""""""
+
+* **``file_or_dir_1``** - file or dir 1 (default: ``None``)
+
+* **``file_or_dir_2``** - file or dir 2 (default: ``None``)
+
+
+uxdiff options
+""""""""""""""
+
+* **``-h``**, **``--help``** - show this help message and exit
+
+* **``--version``** - show program’s version number and exit
+
+* **``-y``**, **``-s``**, **``--side-by-side``** - output in two columns
+
+* **``-f``**, **``--full``** - Fulltext diff (default False) (disable context option)
+
+* **``-c``** ``NUM``, **``--context``** ``NUM`` - Set number of context lines (default 5)
+
+* **``-w``** ``WIDTH``, **``--width``** ``WIDTH`` - Set number of width  (default auto(or 130))
+
+* **``-r``**, **``--recursive``** - Recursively compare any subdirectories found. (default False) (enable only compare directories)
+
+* **``--linejunk``** ``LINEJUNK`` - linejunk (default: ``None``)
+
+* **``--charjunk``** ``CHARJUNK`` - charjunk (default: ``None``)
+
+* **``--cutoff``** ``RATIO`` - Set number of cutoff ratio (default 0.75) (0.0<=ratio<=1.0)
+
+* **``--fuzzy``** ``RATIO`` - Set number of fuzzy matching ratio (default 0.0) (0.0<=ratio<=1.0)
+
+* **``--cutoffchar``** - Cutoff character in line diffs (default False)
+
+* **``--enc-file1``** ``ENCODING`` - Set encoding of leftside inputfile1 (default utf-8)
+
+* **``--enc-file2``** ``ENCODING`` - Set encoding of rightside inputfile2 (default utf-8)
+
+* **``--enc-stdin``** ``ENCODING`` - Set encoding of standard input (default *defaultencoding*)
+
+* **``--enc-stdout``** ``ENCODING`` - Set encoding of standard output (default *defaultencoding*)
+
+* **``--enc-filepath``** ``ENCODING`` - Set encoding of filepath (default *defaultencoding*)
+
+* **``--ignore-crlf``** - Ignore carriage return (``'\r'``) and line feed (``'\n'``) (default False)
+
+* **``--color``** ``WHEN`` - Show colored diff. –color is the same as –color=always. WHEN can be one of always, never, or auto. (default auto)
+
+* **``--no-color``** - Turn off colored diff. override color option if both. (default False)
+
+* **``--withbg``** - Colored diff with background color. It will be ignored if no-color option. (default False)
 
 
 License

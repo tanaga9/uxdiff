@@ -31,4 +31,5 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_rst_builder",
     'sphinxcontrib.programoutput',
+    "sphinx_argparse_cli",
 ]

@@ -50,7 +50,11 @@ See more examples_
 Usage
 ------
 
-.. program-output:: uxdiff --help
+.. sphinx_argparse_cli::
+  :module: uxdiff
+  :func: _make_argparser
+  :prog: uxdiff
+
 
 License
 --------------------
