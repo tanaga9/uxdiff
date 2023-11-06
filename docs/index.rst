@@ -36,9 +36,11 @@ compare
 
 .. code-block:: shell
 
-   uxdiff text1.txt text2.txt --color never
+   uxdiff text1.txt text2.txt
 
-.. program-output:: uxdiff text1.txt text2.txt --color never
+Automatically determine whether coloring is possible and display the difference in the best way.
+
+.. program-output:: uxdiff text1.txt text2.txt
 
 supported multi-byte string. set the encoding with an argument if you need.
 
@@ -54,6 +56,7 @@ Usage
   :module: uxdiff
   :func: _make_argparser
   :prog: uxdiff
+  :usage_width: 50
 
 
 License
