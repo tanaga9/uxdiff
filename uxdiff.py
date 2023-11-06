@@ -914,10 +914,13 @@ class Differ:
             colortext_array.append(colortext)
         return colortext_array
 
-    def pretty_compare(self, lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0):
+    def pretty_compare(self, lines1, lines2, width=130, withcolor=False, withbg=False):
         r"""
         Compare two sequences of string; return a generator of pretty difference representations.
         """
+        return self._pretty_compare(lines1, lines2, width=width, withcolor=withcolor, withbg=withbg)
+
+    def _pretty_compare(self, lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0):
         for diff in self.compare(lines1, lines2):
             if   diff is None:
                 for textlinediff in self.textlinediffs():
@@ -2003,7 +2006,7 @@ def _parse_unidiff_and_original_diff(
                 lines2 = [_expandtabs(str(line)[1:], tabsize=4) for line in hunk.target_lines()]
 
                 textlinediffs = []
-                for diff in differ.pretty_compare(lines1, lines2, width, withcolor, withbg=withbg,
+                for diff in differ._pretty_compare(lines1, lines2, width, withcolor, withbg=withbg,
                     offset1=hunk.source_start - 1,
                     offset2=hunk.target_start - 1):
                     yield diff

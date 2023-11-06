@@ -337,12 +337,12 @@ Compare two text files or directories (or sequences); generate the differences.
 
 **class uxdiff.LikeUnifiedDiffer(*args, **kwargs)**
 
-   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0)**
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False)**
 
       Compare two sequences of string; return a generator of pretty difference representations.
 
 **class uxdiff.SideBySideDiffer(*args, **kwargs)**
 
-   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False, offset1=0, offset2=0)**
+   **pretty_compare(lines1, lines2, width=130, withcolor=False, withbg=False)**
 
       Compare two sequences of string; return a generator of pretty difference representations.
