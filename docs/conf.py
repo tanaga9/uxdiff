@@ -25,6 +25,11 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+html_theme_options = {
+    'nosidebar': True,
+    # 'body_min_width': '70%',
+    # 'page_width': 'auto',
+}
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -33,3 +38,6 @@ extensions = [
     'sphinxcontrib.programoutput',
     "sphinx_argparse_cli",
 ]
+import os
+if os.getenv('BUILD') == 'html':
+    extensions.append("nbsphinx")
