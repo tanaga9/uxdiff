@@ -18,8 +18,8 @@ Install
    pip install uxdiff
 
 
-Example
--------
+`Example <https://tanaga9.github.io/uxdiff/example.html>`_
+----------------------------------------------------------
 
 text1.txt
 
@@ -69,7 +69,7 @@ Automatically determine whether coloring is possible and display the difference 
 
 supported multi-byte string. set the encoding with an argument if you need.
 
-See more `examples <https://github.com/tanaga9/uxdiff/blob/master/docs/example.ipynb>`_
+See more `Example <https://tanaga9.github.io/uxdiff/example.html>`_
 
 
 Usage

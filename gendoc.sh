@@ -1,6 +1,7 @@
 set -eu
 
 CMD="
+apt-get update && apt-get install -y sudo
 sudo apt-get update && sudo apt-get install -y pandoc
 pip install \
 sphinx~=6.2.1 sphinxcontrib-programoutput sphinx-argparse-cli nbsphinx sphinx-rst-builder ipython ipykernel nbconvert pandas .
