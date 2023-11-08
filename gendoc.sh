@@ -11,5 +11,8 @@ BUILD=rst  sphinx-build -b rst  ./docs ./docs/_rst --keep-going
 BUILD=html sphinx-build -b html ./docs ./docs/_html
 cat ./docs/_rst/index.rst | perl -pe 's/\*\*\`\`(.*?)\`\`\*\*/\`\`\1\`\`/g' > README.rst
 "
-
-docker run --rm -it -w /work -v $PWD:/work python:3.10 /bin/sh -euc "$CMD"
+if [ $1 = "workflow" ]; then
+  /bin/sh -euc "$CMD"
+else
+  docker run --rm -it -w /work -v $PWD:/work python:3.10 /bin/sh -euc "$CMD"
+fi
